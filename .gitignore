@@ -1,5 +1,14 @@
 ## Secrets
 .env
+.env.*
+!.env.example
+appsettings.json
+appsettings.Production.json
+docker-compose.yml
+docker-compose.override.yml
+
+## Temp outputs
+temp-outputs/
 
 ## .NET
 bin/
