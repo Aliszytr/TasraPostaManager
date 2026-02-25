@@ -1,0 +1,47 @@
+﻿@model string
+@{
+    ViewData["Title"] = "Etiket Önizleme";
+
+    var recordCount = ViewBag.RecordCount as int? ?? 0;
+    var titleText = ViewBag.TitleText as string ?? "ETİKET ÖNİZLEME";
+    bool hasOverflowWarning = ViewBag.HasOverflowWarning as bool? ?? false;
+    string overflowMessage = ViewBag.OverflowMessage as string ?? "";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+
+            <div class="d-flex align-items-center mb-3">
+                <h3 class="mb-0">
+                    📦 @titleText (@recordCount kayıt)
+                </h3>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>ℹ Bu ekran önizleme içindir.</strong><br />
+                Aynı düzen, <b>"Etiket Oluştur"</b> butonuna bastığınızda oluşturulan PDF çıktısı ile bire bir aynıdır.
+                Tarayıcı araç çubuğundan yazdırabilir, büyütebilir veya PDF olarak kaydedebilirsiniz.
+            </div>
+
+            @if (hasOverflowWarning && !string.IsNullOrWhiteSpace(overflowMessage))
+            {
+                <div class="alert alert-warning">
+                    <strong>Uyarı:</strong> @overflowMessage
+                    <br />
+                    Bu ayarlarla oluşturulan bazı etiketler sayfa sınırlarına çok yakın olabilir.
+                </div>
+            }
+
+            <div class="card shadow-sm">
+                <div class="card-body" style="height: 80vh;">
+                    <iframe src="data:application/pdf;base64,@Model"
+                            style="width:100%;height:100%;border:none;"
+                            title="Etiket Önizleme PDF">
+                    </iframe>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

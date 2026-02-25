@@ -1,0 +1,273 @@
+@model TasraPostaManager.Models.PostaRecord
+@{
+    ViewData["Title"] = "Yeni Posta Kaydı";
+}
+
+@section ActionButtons {
+    <div class="d-flex gap-2">
+        <a href="/Records" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Listeye Dön
+        </a>
+        <button type="submit" form="createForm" class="btn btn-success">
+            <i class="fas fa-save me-1"></i>Kaydı Oluştur
+        </button>
+    </div>
+}
+
+<!-- Bildirimler -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white py-3">
+                <h4 class="m-0 font-weight-bold">
+                    <i class="fas fa-plus-circle me-2"></i>Yeni Posta Kaydı
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="createForm" class="needs-validation" novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <!-- Muhabere No -->
+                        <div class="col-md-6 mb-3">
+                            <label for="MuhabereNo" class="form-label">
+                                <i class="fas fa-hashtag me-1 text-primary"></i>Muhabere No <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="MuhabereNo" name="MuhabereNo"
+                                   required maxlength="50" placeholder="Örn: 2025/32289">
+                            <div class="invalid-feedback">
+                                Lütfen geçerli bir muhabere numarası girin.
+                            </div>
+                        </div>
+
+                        <!-- Liste Tipi -->
+                        <div class="col-md-6 mb-3">
+                            <label for="ListeTipi" class="form-label">
+                                <i class="fas fa-tag me-1 text-primary"></i>Liste Tipi
+                            </label>
+                            <select class="form-select" id="ListeTipi" name="ListeTipi">
+                                <option value="Ucretsiz">Ücretsiz</option>
+                                <option value="Parali">Paralı</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Gittiği Yer -->
+                    <div class="mb-3">
+                        <label for="GittigiYer" class="form-label">
+                            <i class="fas fa-map-marker-alt me-1 text-primary"></i>Gittiği Yer
+                        </label>
+                        <input type="text" class="form-control" id="GittigiYer" name="GittigiYer"
+                               maxlength="200" placeholder="Örn: Muğla 3. İdare Mahkemesi">
+                    </div>
+
+                    <!-- Adres -->
+                    <div class="mb-3">
+                        <label for="Adres" class="form-label">
+                            <i class="fas fa-address-card me-1 text-primary"></i>Adres
+                        </label>
+                        <textarea class="form-control" id="Adres" name="Adres" rows="3"
+                                  maxlength="500" placeholder="Detaylı adres bilgisi..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <!-- Durum -->
+                        <div class="col-md-6 mb-3">
+                            <label for="Durum" class="form-label">
+                                <i class="fas fa-info-circle me-1 text-primary"></i>Durum
+                            </label>
+                            <select class="form-select" id="Durum" name="Durum">
+                                <option value="">Seçiniz</option>
+                                <option value="Teslim Edildi">Teslim Edildi</option>
+                                <option value="Reddiyatı Yapılmamış">Reddiyatı Yapılmamış</option>
+                                <option value="İade Edildi">İade Edildi</option>
+                                <option value="Yolda">Yolda</option>
+                                <option value="Beklemede">Beklemede</option>
+                            </select>
+                        </div>
+
+                        <!-- Tarih -->
+                        <div class="col-md-6 mb-3">
+                            <label for="Tarih" class="form-label">
+                                <i class="fas fa-calendar-alt me-1 text-primary"></i>Tarih
+                            </label>
+                            <input type="date" class="form-control" id="Tarih" name="Tarih">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Miktar -->
+                        <div class="col-md-6 mb-3">
+                            <label for="Miktar" class="form-label">
+                                <i class="fas fa-money-bill-wave me-1 text-primary"></i>Miktar (₺)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="Miktar" name="Miktar"
+                                       step="0.01" min="0" placeholder="0.00">
+                                <span class="input-group-text">₺</span>
+                            </div>
+                            <small class="form-text text-muted">Sadece paralı kayıtlar için doldurun.</small>
+                        </div>
+
+                        <!-- Barkod No -->
+                        <div class="col-md-6 mb-3">
+                            <label for="BarkodNo" class="form-label">
+                                <i class="fas fa-barcode me-1 text-primary"></i>Barkod No
+                            </label>
+                            <input type="text" class="form-control" id="BarkodNo" name="BarkodNo"
+                                   maxlength="100" placeholder="Barkod numarası">
+                        </div>
+                    </div>
+
+                    <!-- Ek Alanlar (İleride kullanım için) -->
+                    <div class="accordion mb-4" id="advancedAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#advancedFields">
+                                    <i class="fas fa-cogs me-2"></i>Gelişmiş Seçenekler
+                                </button>
+                            </h2>
+                            <div id="advancedFields" class="accordion-collapse collapse"
+                                 data-bs-parent="#advancedAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="Gonderen" class="form-label">Gönderen</label>
+                                            <input type="text" class="form-control" id="Gonderen" name="Gonderen"
+                                                   maxlength="100" placeholder="Gönderen bilgisi">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="Aciklama" class="form-label">Açıklama</label>
+                                            <input type="text" class="form-control" id="Aciklama" name="Aciklama"
+                                                   maxlength="200" placeholder="Ek açıklama">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Butonları -->
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                        <a href="/Records" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>İptal
+                        </a>
+                        <div class="d-flex gap-2">
+                            <button type="reset" class="btn btn-outline-warning">
+                                <i class="fas fa-eraser me-1"></i>Temizle
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-1"></i>Kaydı Oluştur
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Hızlı İpuçları Kartı -->
+        <div class="card shadow mt-4">
+            <div class="card-header bg-light py-3">
+                <h5 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-lightbulb me-2"></i>Hızlı İpuçları
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Doğru Format</h6>
+                        <ul class="list-unstyled small">
+                            <li>• Muhabere No: <code>YYYY/XXXXX</code></li>
+                            <li>• Tarih: Geçerli bir tarih seçin</li>
+                            <li>• Miktar: Ondalıklı sayı (örn: 15.50)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-exclamation-triangle text-warning me-2"></i>Dikkat Edilecekler</h6>
+                        <ul class="list-unstyled small">
+                            <li>• Zorunlu alanları eksiksiz doldurun</li>
+                            <li>• Benzersiz muhabere numarası kullanın</li>
+                            <li>• Paralı/Ücretsiz tipini doğru seçin</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Form Validation
+        (function () {
+            'use strict'
+
+            var forms = document.querySelectorAll('.needs-validation')
+
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                        }
+
+                        form.classList.add('was-validated')
+                    }, false)
+                })
+        })()
+
+        // Otomatik Barkod Üretimi (opsiyonel)
+        document.getElementById('MuhabereNo').addEventListener('blur', function() {
+            const barkodField = document.getElementById('BarkodNo');
+            if (!barkodField.value && this.value) {
+                // Basit bir barkod üretimi - gerçek projede daha karmaşık olabilir
+                const autoBarkod = 'TRK' + new Date().getTime().toString().slice(-8);
+                barkodField.value = autoBarkod;
+            }
+        });
+
+        // Tip değişince miktar alanını yönetme
+        document.getElementById('ListeTipi').addEventListener('change', function() {
+            const miktarField = document.getElementById('Miktar');
+            if (this.value === 'Ucretsiz') {
+                miktarField.value = '';
+                miktarField.setAttribute('readonly', 'readonly');
+            } else {
+                miktarField.removeAttribute('readonly');
+            }
+        });
+
+        // Sayfa yüklendiğinde miktar alanını kontrol et
+        document.addEventListener('DOMContentLoaded', function() {
+            const tipSelect = document.getElementById('ListeTipi');
+            const miktarField = document.getElementById('Miktar');
+
+            if (tipSelect.value === 'Ucretsiz') {
+                miktarField.setAttribute('readonly', 'readonly');
+            }
+        });
+
+        // Tarih alanına bugünün tarihini varsayılan olarak ata
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('Tarih').value = today;
+        });
+    </script>
+}

@@ -1,0 +1,204 @@
+﻿@model TasraPostaManager.Models.LabelLayoutResult
+
+@{
+    ViewData["Title"] = "Etiket Yerleşim Önizleme";
+
+    // Önizleme ölçeği: 1mm ≈ 2px (daha net görüntü için)
+    double scale = 2.0;
+
+    // Model'den gelen sayfa boyutu (mm) – 0 ise A4 varsayılanı
+    double pageWidthMM = Model.PageWidthMM > 0 ? Model.PageWidthMM : 210;
+    double pageHeightMM = Model.PageHeightMM > 0 ? Model.PageHeightMM : 297;
+
+    // Yönlendirme sınıfı
+    string orientationClass = Model.IsLandscape ? "landscape" : "portrait";
+
+    // LabelPositions null gelirse güvenli hale getir
+    var positions = Model.LabelPositions ?? new List<TasraPostaManager.Models.LabelPosition>();
+
+    var labelsByPage = positions
+        .GroupBy(p => p.PageIndex)
+        .OrderBy(g => g.Key)
+        .ToList();
+}
+
+<div class="container mt-4">
+    <h3 class="mb-3">
+        📄 Etiket Yerleşim Önizleme
+        <small class="text-muted">(@(positions.Count) etiket)</small>
+    </h3>
+
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        Bu önizleme, etiket sayfasının maket görünümüdür.
+        A4 / A5 / Sürekli form ayarları, satır–sütun ve kenar boşlukları bu görünümde test edilebilir.
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Sayfa boyutu:</strong><br />
+                    @pageWidthMM × @pageHeightMM mm
+                </div>
+                <div class="col-md-2">
+                    <strong>Yönlendirme:</strong><br />
+                    @Model.OrientationDisplay
+                </div>
+                <div class="col-md-2">
+                    <strong>Grid:</strong><br />
+                    @Model.Columns × @Model.Rows
+                </div>
+                <div class="col-md-2">
+                    <strong>Sayfa başına:</strong><br />
+                    @Model.LabelsPerPage etiket
+                </div>
+                <div class="col-md-3">
+                    <strong>Toplam sayfa:</strong><br />
+                    @Model.TotalPages sayfa
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @foreach (var pageGroup in labelsByPage)
+    {
+        var pageIndex = pageGroup.Key;
+        var pageLabels = pageGroup.ToList();
+
+        // Bu sayfadaki etiketlerden gerçek margin hesaplama
+        double minX = pageLabels.Any() ? pageLabels.Min(l => l.X) : 0;
+        double minY = pageLabels.Any() ? pageLabels.Min(l => l.Y) : 0;
+        double maxRight = pageLabels.Any() ? pageLabels.Max(l => l.X + l.Width) : 0;
+        double maxBottom = pageLabels.Any() ? pageLabels.Max(l => l.Y + l.Height) : 0;
+
+        double marginLeftMM = minX;
+        double marginTopMM = minY;
+        double marginRightMM = pageWidthMM - maxRight;
+        double marginBottomMM = pageHeightMM - maxBottom;
+
+        if (marginLeftMM < 0) marginLeftMM = 0;
+        if (marginTopMM < 0) marginTopMM = 0;
+        if (marginRightMM < 0) marginRightMM = 0;
+        if (marginBottomMM < 0) marginBottomMM = 0;
+
+        <div class="page-preview-container mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt"></i> Sayfa @(pageIndex + 1) - @Model.OrientationDisplay
+                </h5>
+                <span class="badge bg-primary">
+                    @pageLabels.Count etiket
+                </span>
+            </div>
+
+            <div class="paper-preview @orientationClass"
+                 style="
+                        position: relative;
+                        width: @(pageWidthMM* scale)px;
+                        height: @(pageHeightMM* scale)px;
+                        border: 2px solid #666;
+                        background: #ffffff;
+                        margin: 0 auto 20px auto;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                     ">
+
+                @* Turuncu kesik çizgi: gerçek kullanılabilir alan (etiketlerin kapladığı alan) *@
+                @if (pageLabels.Any())
+                {
+                    <div class="page-margins"
+                         style="
+                                    position: absolute;
+                                    top: @(marginTopMM* scale)px;
+                                    left: @(marginLeftMM* scale)px;
+                                    right: @(marginRightMM* scale)px;
+                                    bottom: @(marginBottomMM* scale)px;
+                                    border: 1px dashed #ffa500;
+                                    pointer-events: none;
+                                 ">
+                    </div>
+                }
+
+                @* Her etiket için kutu *@
+                @foreach (var lbl in pageLabels)
+                {
+                    var x = lbl.X * scale;
+                    var y = lbl.Y * scale;
+                    var w = lbl.Width * scale;
+                    var h = lbl.Height * scale;
+
+                    <div class="label-preview"
+                         style="
+                                    position: absolute;
+                                    left: @(x)px;
+                                    top: @(y)px;
+                                    width: @(w)px;
+                                    height: @(h)px;
+                                    border: 1px solid #999;
+                                    background: #ffffff;
+                                    border-radius: 10px;
+                                    box-sizing: border-box;
+                                 ">
+                        &nbsp;
+                    </div>
+                }
+            </div>
+
+            <div class="row">
+                @foreach (var lbl in pageLabels.Take(6))
+                {
+                    <div class="col-md-4 col-6 mb-2">
+                        <small class="text-muted">
+                            Satır @(lbl.RowIndex), Sütun @(lbl.ColumnIndex)
+                            – X:@(lbl.X.ToString("0")) Y:@(lbl.Y.ToString("0")) mm
+                        </small>
+                    </div>
+                }
+                @if (pageLabels.Count > 6)
+                {
+                    <div class="col-12">
+                        <small class="text-muted">
+                            ... ve @(pageLabels.Count - 6) etiket daha
+                        </small>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <hr class="my-4" />
+    }
+</div>
+
+<style>
+    .paper-preview.landscape {
+        border-color: #28a745 !important;
+    }
+
+    .paper-preview.portrait {
+        border-color: #007bff !important;
+    }
+
+    .page-preview-container {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        background: white;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var previews = document.querySelectorAll('.paper-preview');
+            previews.forEach(function (preview) {
+                preview.style.margin = '0 auto 20px auto';
+            });
+        });
+
+        // Ayarlar ekranından, kayıtlı ayarlarla layout önizleme açmak için
+        function openLabelLayoutPreview() {
+            const url = '@Url.Action("LayoutPreview", "Labels")';
+            window.open(url, '_blank');
+        }
+    </script>
+}

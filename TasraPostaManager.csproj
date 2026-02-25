@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<InvariantGlobalization>false</InvariantGlobalization>
+		<DefaultItemExcludes>$(DefaultItemExcludes);tests\**;TestOutput\**</DefaultItemExcludes>
+
+		<!-- ÇIKTI (bin) sadece C:\VSCache altında toplansın -->
+		<!--	<BaseOutputPath>C:\VSCache\TasraPostaManager\</BaseOutputPath>-->
+
+		<!-- apphost.exe üretme, Google Drive kilitlemesin -->
+		<UseAppHost>false</UseAppHost>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<UseAppHost>true</UseAppHost>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="wwwroot\outputs\**" />
+		<Content Remove="wwwroot\outputs\**" />
+		<EmbeddedResource Remove="wwwroot\outputs\**" />
+		<None Remove="wwwroot\outputs\**" />
+
+		<Compile Remove="tests\**" />
+		<Content Remove="tests\**" />
+		<EmbeddedResource Remove="tests\**" />
+		<None Remove="tests\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ClosedXML" Version="0.102.2" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="QuestPDF" Version="2025.1.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />
+		<PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.10" />
+		<PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+		<PackageReference Include="SkiaSharp" Version="3.119.1" />
+			<PackageReference Include="DotNetEnv" Version="3.1.1" />
+	</ItemGroup>
+
+	<!-- ZXing sürümleri 0.16.x -->
+	<ItemGroup>
+		<PackageReference Include="ZXing.Net" Version="0.16.11" />
+		<PackageReference Include="ZXing.Net.Bindings.SkiaSharp" Version="0.16.22" />
+		<PackageReference Include="ZXing.Net.Bindings.Windows.Compatibility" Version="0.16.9" />
+	</ItemGroup>
+
+	<!-- Default Items ile çakışmaması için Include değil Update kullanıyoruz -->
+	<ItemGroup>
+		<Content Update="fixed-files\**\*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+
+		<Compile Update="Properties\Resources.Designer.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>Resources.resx</DependentUpon>
+		</Compile>
+
+		<Content Update="wwwroot\config\mapping.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Update="Properties\Resources.resx">
+			<Generator>ResXFileCodeGenerator</Generator>
+			<LastGenOutput>Resources.Designer.cs</LastGenOutput>
+		</EmbeddedResource>
+	</ItemGroup>
+
+
+	<ItemGroup>
+		<None Include=".env" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+		<None Include=".env.example" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+	</ItemGroup>
+</Project>

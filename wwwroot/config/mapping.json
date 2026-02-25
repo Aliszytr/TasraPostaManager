@@ -1,0 +1,11 @@
+{
+  "Columns": {
+    "MuhabereNo": [ "Muhabere No", "MuhabereNo", "MUHABERE NO", "Muh.No", "Evrak No", "EVRAK NO", "numara", "no" ],
+    "GittigiYer": [ "Gittiği Yer", "Gittigi Yer", "GITTIGI YER", "Gönderim Yeri", "GONDERIM YERI", "yer", "adres" ],
+    "Durum": [ "Durum", "DURUM", "Sonuç", "SONUC", "status", "state" ],
+    "Miktar": [ "Miktar", "Tutar", "Miktar (TL)", "Ücret", "Ucret", "price", "fee", "ucret" ],
+    "Adres": [ "Adres", "ADRES", "Açık Adres", "Acik Adres", "address", "fulladres" ],
+    "Tarih": [ "Tarih", "TARİH", "Tarih/Saat", "EVRAK TARIHI", "Evrak Tarihi", "date", "tarih" ],
+    "Barkod": [ "Barkod", "BARKOD", "Barkod No", "BARKOD NO", "PTT Barkod", "PTT BARKOD", "Takip No", "TAKIP NO", "barkod", "barkodno", "barcode" ]
+  }
+}

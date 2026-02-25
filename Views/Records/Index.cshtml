@@ -1,0 +1,984 @@
+@model TasraPostaManager.Controllers.RecordsViewModel
+@{
+    ViewData["Title"] = "Posta Kayıtları Yönetimi";
+    // --- NULL SAFETY & LOGIC FIXES ---
+    var safeGroupedRecords = Model?.GroupedRecords ?? Enumerable.Empty<TasraPostaManager.Controllers.PostaGroupViewModel>();
+    var totalGroupCount = safeGroupedRecords.Count();
+    // ViewBag Null Checks
+    string currentSortField = ViewBag.CurrentSortField as string ?? "Tarih";
+    string currentSortDirection = ViewBag.CurrentSortDirection as string ?? "desc";
+    string currentSearch = ViewBag.SearchQuery as string ?? "";
+    string currentSearchType = ViewBag.SearchType as string ?? "";
+    string currentTip = ViewBag.SelectedTip as string ?? "";
+    string fromValue = ViewBag.FromDate != null ? ((DateTime)ViewBag.FromDate).ToString("yyyy-MM-dd") : "";
+    string toValue = ViewBag.ToDate != null ? ((DateTime)ViewBag.ToDate).ToString("yyyy-MM-dd") : "";
+    // Helper Functions
+    Func<string, string> NextDirection = field => currentSortField == field && currentSortDirection == "asc" ?
+        "desc" : "asc";
+    Func<string, string> SortIconClass = field =>
+    {
+        if (currentSortField != field) return "fa-sort opacity-25 text-muted";
+        return currentSortDirection == "asc" ? "fa-sort-up text-primary" : "fa-sort-down text-primary";
+    };
+}
+
+@section Styles {
+    <link href="~/css/records.css" rel="stylesheet" />
+}
+
+<div class="header-container">
+    <div class="header-content">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="page-title-wrapper">
+                <div class="page-icon-box">
+                    <i class="fas fa-mail-bulk"></i>
+                </div>
+                <div>
+                    <h1 class="page-title">Posta Kayıtları</h1>
+                    <p class="page-subtitle">Gönderi süreçlerinizi profesyonelce yönetin</p>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/Records/Create" class="action-btn action-btn-primary">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Yeni Kayıt</span>
+                </a>
+                <a href="/Uploads" class="action-btn action-btn-success">
+                    <i class="fas fa-file-excel"></i>
+                    <span>Excel Yükle</span>
+                </a>
+                <div class="dropdown">
+                    <button class="action-btn action-btn-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-download"></i>
+                        <span>Dışa Aktar</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-2">
+                        <li><h6 class="dropdown-header small fw-bold text-uppercase text-muted ps-3">Genel Export</h6></li>
+                        <li>
+                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2" href="#" onclick="exportToExcel()">
+                                <i class="fas fa-file-excel text-success"></i>
+                                <span>Standart Excel</span>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-2"></li>
+                        <li><h6 class="dropdown-header small fw-bold text-uppercase text-primary ps-3">PTT Entegrasyon</h6></li>
+                        <li>
+                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2" href="#" onclick="openExportModal('ptt-excel')">
+                                <i class="fas fa-file-export text-success"></i>
+                                <span>PTT Listesi (Excel)</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item rounded-2 py-2 d-flex align-items-center gap-2" href="#"
+                               onclick="openExportModal('ptt-csv')">
+                                <i class="fas fa-file-csv text-info"></i>
+                                <span>PTT Listesi (CSV)</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid" style="max-width: 1600px;">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-soft mb-4 border-0 rounded-3" role="alert">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 bg-white rounded-circle p-2 text-success">
+                    <i class="fas fa-check-circle fa-lg"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <strong class="fw-bold d-block">Başarılı!</strong> @TempData["Success"]
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-soft mb-4 border-0 rounded-3" role="alert">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 bg-white rounded-circle p-2 text-danger">
+                    <i class="fas fa-exclamation-circle fa-lg"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <strong class="fw-bold d-block">Hata!</strong> @TempData["Error"]
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    }
+
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show shadow-soft mb-4 border-0 rounded-3" role="alert">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 bg-white rounded-circle p-2 text-warning">
+                    <i class="fas fa-exclamation-triangle fa-lg"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <strong class="fw-bold d-block">Uyarı!</strong> @TempData["Warning"]
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    }
+
+    <div class="filter-card">
+        <div class="filter-header">
+            <div class="filter-icon-circle">
+                <i class="fas fa-filter"></i>
+            </div>
+            <span class="filter-title">Gelişmiş Filtreleme</span>
+        </div>
+
+        <div class="filter-body">
+            <form method="get" class="row g-4 align-items-end">
+                <div class="col-xl-2 col-lg-4 col-md-6">
+                    <label class="form-label-styled">Arama Tipi</label>
+                    <div class="input-group-styled">
+                        <i class="fas fa-list-ul input-icon"></i>
+                        <select name="searchType" class="form-control-styled">
+                            <option value="" selected="@(currentSearchType == "")">Genel Arama</option>
+                            <option value="muhabere" selected="@(currentSearchType == "muhabere")">Muhabere No</option>
+                            <option value="barkod" selected="@(currentSearchType == "barkod")">Barkod No</option>
+                            <option value="yer" selected="@(currentSearchType == "yer")">Gittiği Yer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label-styled">Arama Metni</label>
+                    <div class="input-group-styled">
+                        <i class="fas fa-search input-icon"></i>
+                        <input type="text" name="q" class="form-control-styled" placeholder="Anahtar kelime..." value="@currentSearch">
+                    </div>
+                </div>
+
+                <div class="col-xl-2 col-lg-4 col-md-6">
+                    <label class="form-label-styled">Liste Tipi</label>
+                    <div class="input-group-styled">
+                        <i class="fas fa-tag input-icon"></i>
+                        <select name="tip" class="form-control-styled">
+                            <option value="" selected="@(currentTip == "")">Tümü</option>
+                            <option value="ParaliDegil" selected="@(currentTip == "ParaliDegil")">Ücretsiz</option>
+                            <option value="Parali" selected="@(currentTip == "Parali")">Paralı</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-lg-6 col-md-6">
+                    <label class="form-label-styled">Tarih Aralığı</label>
+                    <div class="date-container">
+                        <div class="input-group-styled flex-grow-1">
+                            <i class="far fa-calendar-alt input-icon"></i>
+                            <input type="date" name="from" class="form-control-styled" value="@fromValue">
+                        </div>
+                        <span class="text-muted"><i class="fas fa-chevron-right small"></i></span>
+                        <div class="input-group-styled flex-grow-1">
+                            <i class="far fa-calendar-alt input-icon"></i>
+                            <input type="date" name="to" class="form-control-styled" value="@toValue">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-2 col-lg-6 col-md-12">
+                    <button type="submit" class="action-btn action-btn-primary w-100" style="padding: 0.75rem 1rem;">
+                        <i class="fas fa-bolt me-2"></i> Uygula
+                    </button>
+                </div>
+
+                <input type="hidden" name="sortField" value="@currentSortField" />
+                <input type="hidden" name="sortDirection" value="@currentSortDirection" />
+            </form>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <form id="recordsForm" asp-action="BulkDelete" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead class="table-header">
+                        <tr>
+                            <th width="60" class="text-center">
+                                <div class="d-flex justify-content-center">
+                                    <input type="checkbox" class="custom-checkbox" id="selectAllCheckbox">
+                                </div>
+                            </th>
+                            <th>
+                                <a class="sortable-link"
+                                   href="@Url.Action("Index", new { q = currentSearch, searchType = currentSearchType, tip = currentTip, from = fromValue, to = toValue, sortField = "MuhabereNo", sortDirection = NextDirection("MuhabereNo") })">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Muhabere No</span>
+                                        <i class="fas @SortIconClass("MuhabereNo")"></i>
+                                    </div>
+                                </a>
+                            </th>
+                            <th>
+                                <a class="sortable-link"
+                                   href="@Url.Action("Index", new { q = currentSearch, searchType = currentSearchType, tip = currentTip, from = fromValue, to = toValue, sortField = "GittigiYer", sortDirection = NextDirection("GittigiYer") })">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Gittiği Yer</span>
+                                        <i class="fas @SortIconClass("GittigiYer")"></i>
+                                    </div>
+                                </a>
+                            </th>
+                            <th width="150">Durum</th>
+                            <th width="120">Tip</th>
+                            <th width="130">
+                                <a class="sortable-link"
+                                   href="@Url.Action("Index", new { q = currentSearch, searchType = currentSearchType, tip = currentTip, from = fromValue, to = toValue, sortField = "Miktar", sortDirection = NextDirection("Miktar") })">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Miktar</span>
+                                        <i class="fas @SortIconClass("Miktar")"></i>
+                                    </div>
+                                </a>
+                            </th>
+                            <th width="190">
+                                <a class="sortable-link"
+                                   href="@Url.Action("Index", new { q = currentSearch, searchType = currentSearchType, tip = currentTip, from = fromValue, to = toValue, sortField = "BarkodNo", sortDirection = NextDirection("BarkodNo") })">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Barkod No</span>
+                                        <i class="fas @SortIconClass("BarkodNo")"></i>
+                                    </div>
+                                </a>
+                            </th>
+                            <th width="140">
+                                <a class="sortable-link"
+                                   href="@Url.Action("Index", new { q = currentSearch, searchType = currentSearchType, tip = currentTip, from = fromValue, to = toValue, sortField = "Tarih", sortDirection = NextDirection("Tarih") })">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Tarih</span>
+                                        <i class="fas @SortIconClass("Tarih")"></i>
+                                    </div>
+                                </a>
+                            </th>
+                            <th width="130" class="text-end">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var group in safeGroupedRecords)
+                        {
+                            var r = group.MainRecord;
+                            string rowKey = group.GroupId;
+                            string statusClass = "status-pill-gray";
+                            string statusIcon = "fa-info-circle";
+                            // Null check for Durum
+                            string safeDurum = r.Durum ?? "";
+
+                            if (safeDurum.Contains("Reddiyatı"))
+                            {
+                                statusClass = "status-pill-danger";
+                                statusIcon = "fa-times-circle";
+                            }
+                            else if (safeDurum.Contains("Tamamlandı"))
+                            {
+                                statusClass = "status-pill-success";
+                                statusIcon = "fa-check-circle";
+                            }
+                            else if (safeDurum.Contains("Beklemede"))
+                            {
+                                statusClass = "status-pill-warning";
+                                statusIcon = "fa-clock";
+                            }
+                            else if (safeDurum.Contains("Kabul"))
+                            {
+                                statusClass = "status-pill-primary";
+                                statusIcon = "fa-check";
+                            }
+
+                            <tr class="data-row">
+                                <td class="text-center data-cell">
+                                    <div class="d-flex justify-content-center">
+                                        <input type="checkbox"
+                                               class="custom-checkbox record-checkbox"
+                                               name="muhabereNos"
+                                               value="@rowKey"
+                                               data-barkod="@r.BarkodNo"
+                                               data-main-muh="@r.MuhabereNo">
+                                    </div>
+                                </td>
+                                <td class="data-cell">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fw-bold" style="color: var(--primary-600); font-family: monospace; font-size: 1rem;">
+                                                @group.DisplayMuhabereNo
+                                            </span>
+                                            @if (group.Count > 1)
+                                            {
+                                                <span class="badge rounded-pill bg-info bg-opacity-10 text-info border border-info border-opacity-25"
+                                                      data-bs-toggle="tooltip"
+                                                      title="@group.Count adet gönderi">
+                                                    <i class="fas fa-layer-group me-1"></i>@group.Count
+                                                </span>
+                                                <button class="btn btn-sm btn-link text-decoration-none p-0"
+                                                        type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#detay-@group.GroupId.GetHashCode()">
+                                                    <i class="fas fa-chevron-down small"></i>
+                                                </button>
+                                            }
+                                        </div>
+
+                                        @if (group.Count > 1)
+                                        {
+                                            <div class="collapse mt-2" id="detay-@group.GroupId.GetHashCode()">
+                                                <div class="card card-body bg-light border-0 small p-2">
+                                                    <div class="fw-bold text-muted mb-1"><i class="fas fa-envelope-open me-1"></i> Zarf İçeriği</div>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        @foreach (var sub in group.SubRecords)
+                                                        {
+                                                            <div class="bg-white border rounded px-2 py-1 d-flex align-items-center gap-2 shadow-sm">
+                                                                <span class="font-monospace">@sub.MuhabereNo</span>
+                                                                <a href="/Records/Edit?muhabereNo=@sub.MuhabereNo" class="text-primary"><i class="fas fa-edit"></i></a>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="data-cell">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-map-pin text-danger opacity-50 small"></i>
+                                        <span class="text-truncate fw-medium" style="max-width: 220px;" title="@r.GittigiYer">
+                                            @r.GittigiYer
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="data-cell">
+                                    <div class="d-flex flex-column align-items-start gap-1">
+                                        <span class="status-pill @statusClass">
+                                            <i class="fas @statusIcon"></i>
+                                            <span>@safeDurum.Split(' ')[0]</span>
+                                        </span>
+                                        @if (safeDurum.Length > 15)
+                                        {
+                                            <small class="text-muted ms-1" style="font-size: 0.7rem;">
+                                                @safeDurum.Substring(safeDurum.IndexOf(' ') + 1)
+                                            </small>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="data-cell">
+                                    @if (r.ListeTipi == TasraPostaManager.Models.ListeTipi.Parali)
+                                    {
+                                        <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2 fw-bold">
+                                            <i class="fas fa-lira-sign me-1"></i> Paralı
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 fw-bold">
+                                            <i class="fas fa-gift me-1"></i> Ücretsiz
+                                        </span>
+                                    }
+                                </td>
+                                <td class="data-cell">
+                                    @if (group.TotalAmount > 0)
+                                    {
+                                        <span class="fw-bold text-success d-flex align-items-center gap-1 font-monospace">
+                                            <i class="fas fa-lira-sign small"></i>
+                                            @group.TotalAmount.ToString("N2")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted opacity-50">-</span>
+                                    }
+                                </td>
+                                <td class="data-cell">
+                                    @if (!string.IsNullOrEmpty(r.BarkodNo))
+                                    {
+                                        <div class="d-inline-flex align-items-center gap-2 bg-gray-50 border rounded px-2 py-1">
+                                            <i class="fas fa-barcode text-muted"></i>
+                                            <span class="font-monospace text-dark fw-bold">@r.BarkodNo</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small fst-italic">Barkod Yok</span>
+                                    }
+                                </td>
+                                <td class="data-cell">
+                                    @if (r.Tarih.HasValue)
+                                    {
+                                        <span class="text-nowrap d-flex align-items-center gap-2 text-dark">
+                                            <i class="far fa-calendar text-muted"></i>
+                                            @r.Tarih.Value.ToString("dd.MM.yyyy")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="data-cell text-end">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <a href="/Records/Edit?muhabereNo=@r.MuhabereNo"
+                                           class="btn-circle edit"
+                                           data-bs-toggle="tooltip" title="Düzenle">
+                                            <i class="fas fa-pen"></i>
+                                        </a>
+
+                                        @if (!string.IsNullOrEmpty(r.BarkodNo))
+                                        {
+                                            <button type="button"
+                                                    class="btn-circle delete"
+                                                    onclick="confirmDeleteEnvelope('@r.BarkodNo', '@group.DisplayMuhabereNo', @group.Count)"
+                                                    data-bs-toggle="tooltip" title="Zarfı Sil">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="btn-circle delete"
+                                                    onclick="confirmDeleteSingle('@r.MuhabereNo')"
+                                                    data-bs-toggle="tooltip" title="Kaydı Sil">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+
+                        @if (!safeGroupedRecords.Any())
+                        {
+                            <tr>
+                                <td colspan="9">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="fas fa-folder-open"></i>
+                                        </div>
+                                        <h3 class="fw-bold text-gray-800 mb-2">Kayıt Bulunamadı</h3>
+                                        <p class="text-muted mb-4" style="max-width: 400px; margin: 0 auto;">
+                                            Seçtiğiniz kriterlere uygun posta kaydı bulunmuyor.
+                                            Yeni kayıt ekleyebilir veya filtreleri temizleyebilirsiniz.
+                                        </p>
+                                        <div class="d-flex gap-3 justify-content-center">
+                                            <a href="/Records/Create" class="action-btn action-btn-primary">
+                                                <i class="fas fa-plus me-2"></i>Yeni Kayıt Ekle
+                                            </a>
+                                            <a href="@Url.Action("Index")" class="action-btn action-btn-outline">
+                                                <i class="fas fa-sync me-2"></i>Filtreleri Temizle
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2 text-muted fw-bold">
+                        <i class="fas fa-layer-group text-primary"></i>
+                        <span>Toplam <span class="text-dark">@totalGroupCount</span> grup</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2" id="selectionInfo" style="display:none !important;">
+                        <span class="badge bg-primary rounded-pill px-3 py-2">
+                            <span id="selectedCount">0</span> seçili
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="action-btn action-btn-outline" onclick="submitToLabels()">
+                        <i class="fas fa-tags me-1"></i> Etiket Oluştur
+                    </button>
+                    <button type="button" class="action-btn action-btn-danger" style="background: var(--danger-surface); border-color: var(--danger-surface); color: var(--danger-text);" onclick="submitBulkDelete()">
+                        <i class="fas fa-trash-alt me-1"></i> Seçileni Sil
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="fab-container">
+    <div class="fab-wrapper">
+        <span class="fab-label">Etiket Oluştur</span>
+        <button class="fab-btn fab-success" onclick="submitToLabels()">
+            <i class="fas fa-tags"></i>
+        </button>
+    </div>
+
+    <div class="fab-wrapper">
+        <span class="fab-label">Seçilenleri Sil</span>
+        <button class="fab-btn fab-danger" onclick="submitBulkDelete()">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </div>
+
+    <div class="fab-wrapper">
+        <span class="fab-label">Yeni Kayıt Ekle</span>
+        <a href="/Records/Create" class="fab-btn fab-primary">
+            <i class="fas fa-plus"></i>
+        </a>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteEnvelopeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Zarf Silme Onayı
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning border-0 bg-warning bg-opacity-10 d-flex align-items-center rounded-3 p-3 mb-4">
+                    <i class="fas fa-info-circle fa-2x me-3 text-warning"></i>
+                    <div>
+                        <h6 class="fw-bold mb-1 text-warning-dark">Dikkat!</h6>
+                        <p class="mb-0 small text-dark">
+                            Bu işlem geri alınamaz. Aşağıdaki zarf silinecektir.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card border border-light bg-light rounded-3 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Muhabere</span>
+                            <code id="delDisplay" class="fs-6 text-dark fw-bold"></code>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                            <span class="text-muted fw-bold small text-uppercase">Barkod</span>
+                            <code id="delBarcode" class="fs-6 text-dark fw-bold"></code>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted fw-bold small text-uppercase">İçerik</span>
+                            <div>
+                                <span id="delCount" class="badge bg-primary rounded-pill"></span> <span class="small text-muted">kayıt</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-gray-50 p-3">
+                <form action="/Records/DeleteEnvelope" method="post" class="w-100">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="barkodNo" id="delBarcodeField" />
+                    <div class="d-flex justify-content-between gap-3 w-100">
+                        <button type="button" class="btn btn-white border shadow-sm rounded-pill px-4 flex-grow-1" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 shadow-sm flex-grow-1">
+                            <i class="fas fa-trash me-2"></i>Evet, Sil
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white border-0 py-3" style="background: var(--primary-gradient);">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-file-export me-2"></i>Dışa Aktar
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted mb-4 small">Lütfen dışa aktarma ayarlarını seçiniz.</p>
+
+                <div id="exportFormatContainer" class="d-none mb-4">
+                    <h6 class="text-uppercase text-muted fw-bold small mb-2" style="font-size:0.75rem; letter-spacing:0.05em;">Liste Formatı</h6>
+                    <div class="d-flex flex-column gap-2">
+                        <div class="position-relative">
+                            <input type="radio" class="export-option-input d-none" name="exportFormat" id="formatDetailed" value="detailed" checked>
+                            <label for="formatDetailed" class="export-option-card py-2">
+                                <div class="export-icon-box text-secondary shadow-sm" style="width:32px; height:32px; font-size:1rem;">
+                                    <i class="fas fa-list"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <span class="d-block fw-bold text-dark small">Detaylı Liste (Standart)</span>
+                                    <span class="text-muted" style="font-size:0.75rem;">Her evrak ayrı satırda listelenir</span>
+                                </div>
+                                <i class="fas fa-check-circle text-primary fs-6 opacity-0 option-check"></i>
+                            </label>
+                        </div>
+                        <div class="position-relative">
+                            <input type="radio" class="export-option-input d-none" name="exportFormat" id="formatGrouped" value="grouped">
+                            <label for="formatGrouped" class="export-option-card py-2">
+                                <div class="export-icon-box text-primary shadow-sm" style="width:32px; height:32px; font-size:1rem;">
+                                    <i class="fas fa-layer-group"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <span class="d-block fw-bold text-dark small">Gruplandırılmış (Teslim) Listesi</span>
+                                    <span class="text-muted" style="font-size:0.75rem;">Aynı zarftakiler birleştirilir (Örn: 2025/10-15)</span>
+                                </div>
+                                <i class="fas fa-check-circle text-primary fs-6 opacity-0 option-check"></i>
+                            </label>
+                        </div>
+                    </div>
+                    <hr class="my-3 border-secondary opacity-10">
+                </div>
+
+                <h6 class="text-uppercase text-muted fw-bold small mb-2" style="font-size:0.75rem; letter-spacing:0.05em;">İndirme Yöntemi</h6>
+                <div class="d-flex flex-column gap-3 mb-4">
+                    <div class="position-relative">
+                        <input type="radio" class="export-option-input d-none" name="exportOption" id="optDownload" value="download" checked onchange="toggleEmailInput()">
+                        <label for="optDownload" class="export-option-card">
+                            <div class="export-icon-box text-success shadow-sm">
+                                <i class="fas fa-download"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="d-block fw-bold text-dark">Sadece İndir</span>
+                                <span class="small text-muted">Dosyayı cihazınıza kaydedin</span>
+                            </div>
+                            <i class="fas fa-check-circle text-primary fs-5 opacity-0 option-check"></i>
+                        </label>
+                    </div>
+
+                    <div class="position-relative">
+                        <input type="radio" class="export-option-input d-none" name="exportOption" id="optEmail" value="email" onchange="toggleEmailInput()">
+                        <label for="optEmail" class="export-option-card">
+                            <div class="export-icon-box text-primary shadow-sm">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <span class="d-block fw-bold text-dark">Mail ile Gönder (+İndir)</span>
+                                <span class="small text-muted">Dosyayı indirin ve bir kopyasını mail atın</span>
+                            </div>
+                            <i class="fas fa-check-circle text-primary fs-5 opacity-0 option-check"></i>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="exportEmailContainer" class="collapse">
+                    <label class="form-label-styled">Alıcı E-Posta Adresi</label>
+                    <div class="input-group-styled">
+                        <i class="fas fa-at input-icon"></i>
+                        <input type="email" id="exportEmailInput" class="form-control-styled" placeholder="ornek@posta.com">
+                    </div>
+                    <small class="text-muted mt-2 d-block fst-italic"><i class="fas fa-info-circle me-1"></i> Son kullanılan adres otomatik hatırlanır.</small>
+                </div>
+
+            </div>
+            <div class="modal-footer border-0 bg-gray-50 p-3">
+                <div class="d-flex justify-content-between gap-3 w-100">
+                    <button type="button" class="btn btn-white border shadow-sm rounded-pill px-4 flex-grow-1" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" onclick="confirmExport()" class="btn btn-primary rounded-pill px-4 shadow-sm flex-grow-1" style="background: var(--primary-gradient); border:none;">
+                        <i class="fas fa-file-export me-2"></i>Oluştur
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="deleteSingleForm" action="/Records/DeleteSingle" method="post" class="d-none">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="muhabereNo" id="deleteSingleMuhField" />
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        // Row selection handling
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const recordCheckboxes = document.querySelectorAll('.record-checkbox');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const selectionInfo = document.getElementById('selectionInfo');
+
+        function updateSelectedCount() {
+            const count = document.querySelectorAll('.record-checkbox:checked').length;
+            if (selectedCountSpan) {
+                selectedCountSpan.textContent = count;
+                // Show/Hide selection info based on count
+                if (selectionInfo) {
+                    selectionInfo.style.display = count > 0 ? 'flex' : 'none';
+                    if (count > 0) selectionInfo.style.setProperty("display", "flex", "important");
+                }
+            }
+        }
+
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function () {
+                const checked = this.checked;
+                document.querySelectorAll('.record-checkbox').forEach(cb => {
+                    cb.checked = checked;
+                    const row = cb.closest('tr');
+                    if (checked) {
+                        row.classList.add('selected');
+                    } else {
+                        row.classList.remove('selected');
+                    }
+                });
+                updateSelectedCount();
+            });
+        }
+
+        recordCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function () {
+                const row = this.closest('tr');
+                if (this.checked) {
+                    row.classList.add('selected');
+                } else {
+                    row.classList.remove('selected');
+                }
+                updateSelectedCount();
+
+                // Update select all checkbox state
+                const allChecked = document.querySelectorAll('.record-checkbox:checked').length;
+                const allCheckboxes = recordCheckboxes.length;
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allChecked === allCheckboxes && allCheckboxes > 0;
+                    selectAllCheckbox.indeterminate = allChecked > 0 && allChecked < allCheckboxes;
+                }
+            });
+        });
+    });
+
+    // Zarf silme modalı
+    function confirmDeleteEnvelope(barcode, display, count) {
+        if (!barcode) return;
+        document.getElementById('delDisplay').innerText = display;
+        document.getElementById('delBarcode').innerText = barcode;
+        document.getElementById('delCount').innerText = count;
+        document.getElementById('delBarcodeField').value = barcode;
+
+        var myModal = new bootstrap.Modal(document.getElementById('deleteEnvelopeModal'));
+        myModal.show();
+    }
+
+    // Tek kayıt silme
+    function confirmDeleteSingle(muhabereNo) {
+        if (!muhabereNo) return;
+        if (confirm(muhabereNo + ' numaralı kaydı silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!')) {
+            const form = document.getElementById('deleteSingleForm');
+            document.getElementById('deleteSingleMuhField').value = muhabereNo;
+            form.submit();
+        }
+    }
+
+    // --- YENİ EXPORT FONKSİYONLARI ---
+
+    // Standart Excel (Değişmedi)
+    function exportToExcel() {
+        showPageOverlay('Excel dosyası hazırlanıyor...');
+        setTimeout(() => {
+            window.location.href = '/Records/ExportToExcel?' + window.location.search.substring(1);
+        }, 500);
+    }
+
+    let currentExportType = ''; // 'ptt-excel' or 'ptt-csv'
+
+    // Modalı açan fonksiyon
+    function openExportModal(type) {
+        currentExportType = type;
+        // LocalStorage'dan son maili getir
+        const savedEmail = localStorage.getItem('lastExportEmail');
+        if (savedEmail) {
+            document.getElementById('exportEmailInput').value = savedEmail;
+        }
+
+        // Varsayılan olarak "İndir" seçili gelsin ve input kapalı olsun
+        document.getElementById('optDownload').checked = true;
+        document.getElementById('exportEmailContainer').classList.remove('show');
+
+        // FORMAT SEÇİMİ GÖSTER/GİZLE
+        const formatContainer = document.getElementById('exportFormatContainer');
+        // Hem Excel hem CSV için format seçimini göster
+        if (type === 'ptt-excel' || type === 'ptt-csv') {
+            formatContainer.classList.remove('d-none');
+            // Her açılışta varsayılan olarak "Detaylı" seçilsin
+            document.getElementById('formatDetailed').checked = true;
+        } else {
+            // Diğer durumlar için gizle
+            formatContainer.classList.add('d-none');
+        }
+
+        var modal = new bootstrap.Modal(document.getElementById('exportModal'));
+        modal.show();
+    }
+
+    // Radio button değişince inputu aç/kapa
+    function toggleEmailInput() {
+        const isEmailSelected = document.getElementById('optEmail').checked;
+        const container = document.getElementById('exportEmailContainer');
+
+        if (isEmailSelected) {
+            new bootstrap.Collapse(container, { toggle: false }).show();
+            // Inputa odaklan
+            setTimeout(() => document.getElementById('exportEmailInput').focus(), 200);
+        } else {
+            new bootstrap.Collapse(container, { toggle: false }).hide();
+        }
+    }
+
+    // Modal Onayla Butonu
+    function confirmExport() {
+        const isEmailSelected = document.getElementById('optEmail').checked;
+        let emailParam = '';
+
+        if (isEmailSelected) {
+            const email = document.getElementById('exportEmailInput').value.trim();
+            if (!email) {
+                alert('Lütfen geçerli bir e-posta adresi giriniz.');
+                return;
+            }
+            // Maili kaydet
+            localStorage.setItem('lastExportEmail', email);
+            emailParam = '&emailAddress=' + encodeURIComponent(email);
+        }
+
+        // URL Belirle
+        let actionUrl = '';
+        let msg = '';
+        let formatParam = '';
+
+        // Format parametresini al (Detaylı vs Gruplu)
+        if (document.getElementById('formatGrouped').checked) {
+            formatParam = '&exportFormat=grouped';
+        } else {
+            formatParam = '&exportFormat=detailed';
+        }
+
+        if (currentExportType === 'ptt-excel') {
+            actionUrl = '/Records/ExportPttExcel';
+            msg = 'PTT Excel dosyası hazırlanıyor' + (isEmailSelected ? ' ve mail gönderiliyor...' : '...');
+        } else if (currentExportType === 'ptt-csv') {
+            actionUrl = '/Records/ExportPttCsv';
+            msg = 'PTT CSV dosyası hazırlanıyor' + (isEmailSelected ? ' ve mail gönderiliyor...' : '...');
+        }
+
+        // Modal'ı kapat
+        const modalEl = document.getElementById('exportModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+
+        showPageOverlay(msg);
+
+        // Mevcut filtreleri koruyarak yönlendir
+        let currentQuery = window.location.search;
+        if (currentQuery === '') currentQuery = '?';
+
+        setTimeout(() => {
+            const finalUrl = actionUrl + currentQuery + emailParam + formatParam;
+            window.location.href = finalUrl;
+        }, 500);
+    }
+
+    // Seçilen grupları Labels ekranına gönder
+    function submitToLabels() {
+        const checked = document.querySelectorAll('.record-checkbox:checked');
+        if (checked.length === 0) {
+            showPageAlert('warning', 'Uyarı', 'Etiket/Liste oluşturmak için en az bir grup seçmelisiniz.');
+            return;
+        }
+
+        const tokenInput = document.querySelector('#recordsForm input[name="__RequestVerificationToken"]');
+        const tokenValue = tokenInput ? tokenInput.value : null;
+
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '/Records/SendToLabels';
+        if (tokenValue) {
+            const tokenField = document.createElement('input');
+            tokenField.type = 'hidden';
+            tokenField.name = '__RequestVerificationToken';
+            tokenField.value = tokenValue;
+            form.appendChild(tokenField);
+        }
+
+        checked.forEach(cb => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selected';
+            input.value = cb.value;
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        // showLoading expects a button element, not a string
+        var labelBtn = document.querySelector('.fab-success') || document.querySelector('.action-btn-outline');
+        if (labelBtn) showLoading(labelBtn);
+        setTimeout(() => {
+            form.submit();
+        }, 300);
+    }
+
+    // Toplu silme fonksiyonu
+    function submitBulkDelete() {
+        const checked = document.querySelectorAll('.record-checkbox:checked');
+        if (checked.length === 0) {
+            showPageAlert('warning', 'Uyarı', 'Silmek için en az bir grup seçmelisiniz.');
+            return;
+        }
+
+        if (confirm(`${checked.length} adet grubu ve içindeki tüm kayıtları silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!`)) {
+            var deleteBtn = document.querySelector('.action-btn-danger') || document.querySelector('.fab-danger');
+            if (deleteBtn) showLoading(deleteBtn);
+            setTimeout(() => {
+                document.getElementById('recordsForm').submit();
+            }, 500);
+        }
+    }
+
+    // Yardımcı fonksiyonlar
+    function showPageOverlay(message) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center';
+        loadingDiv.style.backgroundColor = 'rgba(255,255,255,0.85)';
+        loadingDiv.style.zIndex = '9999';
+        loadingDiv.style.backdropFilter = 'blur(5px)';
+        loadingDiv.innerHTML = `
+                <div class="text-center p-5 rounded-4 shadow-lg bg-white border">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 class="text-gray-800 fw-bold">${message}</h5>
+                </div>
+            `;
+        document.body.appendChild(loadingDiv);
+        setTimeout(() => { if (document.body.contains(loadingDiv)) document.body.removeChild(loadingDiv); }, 3000);
+    }
+
+    function showPageAlert(type, title, message) {
+        const alertDiv = document.createElement('div');
+        let icon = type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+        let alertClass = type === 'warning' ? 'warning' : 'primary';
+        alertDiv.className = `alert alert-${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x shadow-lg border-0 rounded-4`;
+        alertDiv.style.zIndex = '9999';
+        alertDiv.style.minWidth = '350px';
+        alertDiv.style.marginTop = '20px';
+
+        alertDiv.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-${icon} me-3 fa-lg"></i>
+                    <div>
+                        <strong class="d-block">${title}</strong>
+                        <span class="small opacity-75">${message}</span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        document.body.appendChild(alertDiv);
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                const bsAlert = new bootstrap.Alert(alertDiv);
+                bsAlert.close();
+            }
+        }, 4000);
+    }
+</script>

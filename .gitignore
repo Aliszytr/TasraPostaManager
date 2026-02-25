@@ -1,0 +1,38 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.pdb
+*.exe
+
+## IDE
+.vs/
+.vscode/
+*.swp
+
+## Logs
+Logs/
+*.log
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+## Gemini/Agent
+.gemini/
+
+## Database (local backups)
+*.bak
+*.mdf
+*.ldf
+
+## Published output
+publish/
+out/
+
+## User secrets
+appsettings.Development.json

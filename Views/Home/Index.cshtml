@@ -1,0 +1,273 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+
+    var totalRecords = ViewBag.TotalRecords ?? 0;
+    var paraliCount = ViewBag.ParaliCount ?? 0;
+    var paraliDegilCount = ViewBag.ParaliDegilCount ?? 0;
+    var totalMiktar = ViewBag.TotalMiktar ?? 0m;
+    var thisMonthCount = ViewBag.ThisMonthCount ?? 0;
+    var totalLabels = ViewBag.TotalLabels ?? 0;
+    var recentActivities = (ViewBag.RecentActivities as List<TasraPostaManager.Controllers.RecentActivity>) ?? new List<TasraPostaManager.Controllers.RecentActivity>();
+}
+
+@section ActionButtons {
+    <div class="d-flex gap-2">
+        <a href="/Records/Create" class="btn btn-sm btn-tp btn-tp-primary">
+            <i class="fas fa-plus-circle"></i>Yeni Kayıt
+        </a>
+        <button class="btn btn-sm btn-tp btn-tp-outline" id="refreshData">
+            <i class="fas fa-sync-alt"></i>Yenile
+        </button>
+    </div>
+}
+
+<!-- Statistics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="stat-card accent-primary">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon icon-primary">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div>
+                    <div class="stat-label">Toplam Kayıt</div>
+                    <div class="stat-value" id="totalRecords">@totalRecords</div>
+                    <div class="stat-sub">Tüm zamanlar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="stat-card accent-success">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon icon-success">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div>
+                    <div class="stat-label">Paralı</div>
+                    <div class="stat-value" id="paraliCount">@paraliCount</div>
+                    <div class="stat-sub">Miktar > 0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="stat-card accent-warning">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon icon-warning">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <div>
+                    <div class="stat-label">Paralı Değil</div>
+                    <div class="stat-value" id="paraliDegilCount">@paraliDegilCount</div>
+                    <div class="stat-sub">Miktar = 0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="stat-card accent-info">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon icon-info">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div>
+                    <div class="stat-label">Toplam Miktar</div>
+                    <div class="stat-value" id="totalMiktar">@totalMiktar.ToString("C2")</div>
+                    <div class="stat-sub">Toplam tutar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="stat-card accent-secondary">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon icon-secondary">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div>
+                    <div class="stat-label">Bu Ay</div>
+                    <div class="stat-value" id="thisMonthCount">@thisMonthCount</div>
+                    <div class="stat-sub">@DateTime.Now.ToString("MMMM")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+        <div class="stat-card accent-danger">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stat-icon icon-danger">
+                    <i class="fas fa-tags"></i>
+                </div>
+                <div>
+                    <div class="stat-label">Etiketler</div>
+                    <div class="stat-value" id="totalLabels">@totalLabels</div>
+                    <div class="stat-sub">Oluşturulan</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="row g-4">
+    <!-- Quick Actions -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="m-0 fw-bold" style="font-size: var(--text-md);">
+                    <i class="fas fa-tachometer-alt me-2 text-primary"></i>Hızlı Erişim & İşlemler
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <a href="/Uploads" class="action-card d-block text-decoration-none p-4 h-100">
+                            <div class="action-icon" style="background: var(--color-primary-50); color: var(--color-primary);">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <h6 class="action-title">Excel İçe Aktar</h6>
+                            <p class="action-desc mb-2">Excel dosyasından toplu veri yükleme</p>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Toplu İşlem</span>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6">
+                        <a href="/Records" class="action-card d-block text-decoration-none p-4 h-100">
+                            <div class="action-icon" style="background: rgba(6,182,212,0.1); color: var(--color-info);">
+                                <i class="fas fa-list"></i>
+                            </div>
+                            <h6 class="action-title">Kayıtları Yönet</h6>
+                            <p class="action-desc mb-2">Tüm kayıtları görüntüle ve yönet</p>
+                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">@totalRecords kayıt</span>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6">
+                        <a href="/Records/Create" class="action-card d-block text-decoration-none p-4 h-100">
+                            <div class="action-icon" style="background: rgba(245,158,11,0.1); color: var(--color-warning);">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <h6 class="action-title">Manuel Kayıt Ekle</h6>
+                            <p class="action-desc mb-2">Tekil yeni kayıt oluştur</p>
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">Bireysel İşlem</span>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6">
+                        <a href="/Labels" class="action-card d-block text-decoration-none p-4 h-100">
+                            <div class="action-icon" style="background: rgba(239,68,68,0.1); color: var(--color-danger);">
+                                <i class="fas fa-tags"></i>
+                            </div>
+                            <h6 class="action-title">Etiket Oluştur</h6>
+                            <p class="action-desc mb-2">Posta etiketleri oluştur ve yazdır</p>
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">PDF Çıktı</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Recent Activity + Quick Actions -->
+    <div class="col-lg-4">
+        <!-- Recent Activity -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="m-0 fw-bold" style="font-size: var(--text-md);">
+                    <i class="fas fa-history me-2" style="color: var(--color-success);"></i>Son İşlemler
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="recentActivity">
+                    @if (recentActivities.Any())
+                    {
+                        @foreach (var activity in recentActivities)
+                        {
+                            <div class="list-group-item d-flex align-items-center py-3 px-4 border-0" style="border-bottom: 1px solid var(--border-color-light) !important;">
+                                <div class="flex-shrink-0">
+                                    <div style="width: 36px; height: 36px; border-radius: var(--radius-lg); background: var(--color-primary-50); display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 0.85rem;">
+                                        <i class="fas @activity.Icon"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="fw-semibold" style="font-size: var(--text-sm);">@activity.Title</div>
+                                    <small style="color: var(--text-muted); font-size: var(--text-xs);">@activity.Subtitle &mdash; @activity.Type</small>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5" style="color: var(--text-muted);">
+                            <i class="fas fa-inbox fa-2x mb-2 opacity-50"></i>
+                            <div style="font-size: var(--text-sm);">Henüz kayıt bulunmuyor</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="m-0 fw-bold" style="font-size: var(--text-md);">
+                    <i class="fas fa-bolt me-2" style="color: var(--color-info);"></i>Hızlı İşlemler
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="/FixedImports" class="btn btn-tp btn-tp-outline d-flex align-items-center justify-content-center">
+                        <i class="fas fa-database me-2"></i>Sabit Dosya İçe Aktar
+                    </a>
+                    <button class="btn btn-tp btn-tp-outline d-flex align-items-center justify-content-center" id="refreshBtn">
+                        <i class="fas fa-sync-alt me-2"></i>Verileri Yenile
+                    </button>
+                    <a href="/Records" class="btn btn-tp btn-tp-outline d-flex align-items-center justify-content-center">
+                        <i class="fas fa-list me-2"></i>Kayıtları Gör
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Refresh functionality
+        document.getElementById('refreshBtn')?.addEventListener('click', function () {
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Yenileniyor...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        });
+
+        document.getElementById('refreshData')?.addEventListener('click', function () {
+            location.reload();
+        });
+
+        // Add loading states to action cards
+        document.querySelectorAll('.action-card').forEach(card => {
+            card.addEventListener('click', function (e) {
+                if (this.getAttribute('href') && !this.getAttribute('href').startsWith('#')) {
+                    const originalHtml = this.innerHTML;
+                    this.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Yönlendiriliyor...</div>';
+
+                    setTimeout(() => {
+                        this.innerHTML = originalHtml;
+                    }, 2000);
+                }
+            });
+        });
+    </script>
+}

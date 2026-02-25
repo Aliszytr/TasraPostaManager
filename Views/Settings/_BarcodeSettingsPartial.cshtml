@@ -1,0 +1,83 @@
+﻿@model TasraPostaManager.Models.SettingsViewModel
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="BarcodePrefix" class="form-label fw-semibold"></label>
+        <input asp-for="BarcodePrefix" class="form-control" />
+        <span asp-validation-for="BarcodePrefix" class="text-danger small"></span>
+        <small class="form-text text-muted">
+            Barkod numarasının başına eklenecek harfler. Örn: <code>RR</code>
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="BarcodeStartNumber" class="form-label fw-semibold"></label>
+        <input asp-for="BarcodeStartNumber" class="form-control" type="number" />
+        <span asp-validation-for="BarcodeStartNumber" class="text-danger small"></span>
+        <small class="form-text text-muted">
+            Barkodun sayısal kısmının başlayacağı numara.
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="BarcodeDigitCount" class="form-label fw-semibold"></label>
+        <input asp-for="BarcodeDigitCount" class="form-control" type="number" />
+        <span asp-validation-for="BarcodeDigitCount" class="text-danger small"></span>
+        <small class="form-text text-muted">
+            Sayısal kısmın toplam basamak sayısı. Eksik kalan basamaklar otomatik sıfır ile doldurulur.
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="BarcodeSuffix" class="form-label fw-semibold"></label>
+        <input asp-for="BarcodeSuffix" class="form-control" />
+        <span asp-validation-for="BarcodeSuffix" class="text-danger small"></span>
+        <small class="form-text text-muted">
+            Barkodun sonuna eklenecek ek. Örn: <code>TR</code>
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="BarcodeQuantity" class="form-label fw-semibold"></label>
+        <input asp-for="BarcodeQuantity" class="form-control" type="number" />
+        <span asp-validation-for="BarcodeQuantity" class="text-danger small"></span>
+        <small class="form-text text-muted">
+            Toplam üretilecek barkod adedi.
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="DefaultBarcodeSize" class="form-label fw-semibold"></label>
+        <select asp-for="DefaultBarcodeSize" class="form-select">
+            <option value="small">Küçük</option>
+            <option value="medium">Orta</option>
+            <option value="large">Büyük</option>
+            <option value="xlarge">XL</option>
+        </select>
+        <span asp-validation-for="DefaultBarcodeSize" class="text-danger small"></span>
+        <small class="form-text text-muted">
+            PDF üzerinde kullanılacak varsayılan barkod yüksekliği.
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <div class="form-check mt-4">
+            <input asp-for="ShowBarcodeText" class="form-check-input" type="checkbox" />
+            <label asp-for="ShowBarcodeText" class="form-check-label fw-semibold"></label>
+        </div>
+        <small class="form-text text-muted">
+            İşaretliyse, barkodun altında barkod değeri metin olarak da yazdırılır.
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label fw-semibold">Örnek Barkod</label>
+        <div class="border rounded p-2 bg-light">
+            <div class="small text-muted mb-1">Örnek Değer</div>
+            <div class="fw-bold font-monospace" id="barcodePreview"></div>
+            <div class="small text-muted">
+                Toplam Uzunluk: <span id="previewLength">0</span> karakter
+            </div>
+        </div>
+    </div>
+</div>

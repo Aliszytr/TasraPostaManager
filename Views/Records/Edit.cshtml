@@ -1,0 +1,183 @@
+@model TasraPostaManager.Models.PostaRecord
+@{
+    ViewData["Title"] = "Kayıt Düzenle - " + Model.MuhabereNo;
+}
+
+@section ActionButtons {
+    <div class="d-flex gap-2">
+        <a href="/Records" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Listeye Dön
+        </a>
+        <button type="submit" form="editForm" class="btn btn-success">
+            <i class="fas fa-save me-1"></i>Kaydet
+        </button>
+        <button type="button"
+                class="btn btn-outline-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#deleteOptionsModal">
+            <i class="fas fa-trash me-1"></i>Sil
+        </button>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark py-3">
+                <h4 class="m-0 font-weight-bold">
+                    <i class="fas fa-edit me-2"></i>
+                    Kayıt Düzenle
+                    <span class="badge bg-dark fs-6 ms-2">@Model.MuhabereNo</span>
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post"
+                      id="editForm"
+                      asp-action="Edit"
+                      asp-controller="Records"
+                      asp-route-muhabereNo="@Model.MuhabereNo">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Muhabere No</label>
+                            <input type="text"
+                                   class="form-control bg-light"
+                                   value="@Model.MuhabereNo"
+                                   readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Barkod No (Zarf)</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="BarkodNo"
+                                   value="@Model.BarkodNo">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Gittiği Yer</label>
+                        <input type="text"
+                               class="form-control"
+                               name="GittigiYer"
+                               value="@Model.GittigiYer">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Adres</label>
+                        <textarea class="form-control"
+                                  name="Adres"
+                                  rows="2">@Model.Adres</textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Durum</label>
+                            <select class="form-select" name="Durum">
+                                <!option value="Teslim Edildi" @(Model.Durum == "Teslim Edildi" ? "selected" : "")>
+                                    Teslim Edildi
+                                </!option>
+                                <!option value="Reddiyatı Yapılmamış" @(Model.Durum == "Reddiyatı Yapılmamış" ? "selected" : "")>
+                                    Reddiyatı Yapılmamış
+                                </!option>
+                                <!option value="İade Edildi" @(Model.Durum == "İade Edildi" ? "selected" : "")>
+                                    İade Edildi
+                                </!option>
+                                <!option value="Beklemede" @(Model.Durum == "Beklemede" ? "selected" : "")>
+                                    Beklemede
+                                </!option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tarih</label>
+                            <input type="date"
+                                   class="form-control"
+                                   name="Tarih"
+                                   value="@(Model.Tarih?.ToString("yyyy-MM-dd"))">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Miktar</label>
+                            <input type="number"
+                                   step="0.01"
+                                   class="form-control"
+                                   name="Miktar"
+                                   value="@(Model.Miktar?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "0.00")">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Liste Tipi</label>
+                            <select class="form-select" name="ListeTipi">
+                                <!option value="Parali"
+                                        @(Model.ListeTipi == TasraPostaManager.Models.ListeTipi.Parali ? "selected" : "")>
+                                    Paralı
+                                </!option>
+                                <!option value="ParaliDegil"
+                                        @(Model.ListeTipi == TasraPostaManager.Models.ListeTipi.ParaliDegil ? "selected" : "")>
+                                    Ücretsiz
+                                </!option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Silme Seçenekleri Modalı -->
+<div class="modal fade" id="deleteOptionsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Silme Seçenekleri</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    <strong>@Model.MuhabereNo</strong> numaralı kayıt için işlem yapıyorsunuz.
+                </p>
+
+                @if (!string.IsNullOrEmpty(Model.BarkodNo))
+                {
+                    <div class="alert alert-info border-info">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Bu kayıt <strong>@Model.BarkodNo</strong> barkodlu zarf grubuna dahildir.
+                    </div>
+                }
+
+                <p>Lütfen yapmak istediğiniz işlemi seçin:</p>
+            </div>
+            <div class="modal-footer flex-column align-items-stretch">
+                <!-- Sadece bu kaydı sil -->
+                <form action="/Records/DeleteSingle" method="post" class="w-100 mb-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="muhabereNo" value="@Model.MuhabereNo" />
+                    <button type="submit" class="btn btn-outline-secondary w-100 text-start py-2">
+                        <i class="fas fa-minus me-2"></i>
+                        <strong>Sadece Bu Kaydı Sil</strong><br />
+                        <small class="ms-4 text-muted">Zarfın diğer içerikleri korunur.</small>
+                    </button>
+                </form>
+
+                @if (!string.IsNullOrEmpty(Model.BarkodNo))
+                {
+                    <!-- Tüm zarf grubunu sil -->
+                    <form action="/Records/DeleteEnvelope" method="post" class="w-100">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="barkodNo" value="@Model.BarkodNo" />
+                        <button type="submit" class="btn btn-danger w-100 text-start py-2">
+                            <i class="fas fa-trash-alt me-2"></i>
+                            <strong>Tüm Zarf Grubunu Sil</strong><br />
+                            <small class="ms-4 text-white-50">
+                                @Model.BarkodNo barkoduna sahip tüm kayıtlar silinir.
+                            </small>
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>

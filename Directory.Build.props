@@ -1,0 +1,12 @@
+<Project>
+	<PropertyGroup>
+		<!-- Çıktılar (bin) -->
+		<BaseOutputPath>C:\VSCache\TasraPostaManager\bin\</BaseOutputPath>
+
+		<!-- Ara çıktılar (obj) -->
+		<BaseIntermediateOutputPath>C:\VSCache\TasraPostaManager\obj\</BaseIntermediateOutputPath>
+
+		<!-- Drive kilit sorunlarını azaltır -->
+		<UseAppHost>false</UseAppHost>
+	</PropertyGroup>
+</Project>

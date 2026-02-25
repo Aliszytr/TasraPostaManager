@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Redirect build output OUTSIDE the main project tree to avoid GenerateDepsFile conflict -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\..\TestBuildOutput\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)..\..\TestBuildOutput\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="TasraPostaManager - Profesyonel Posta Yönetim Sistemi" />
+    <title>@ViewData["Title"] - TasraPostaManager</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- CSS: Bootstrap / Font Awesome / DataTables -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet" />
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <!-- Theme: prevent FOUC -->
+    <script>
+        (function() {
+            var t = localStorage.getItem('tp-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+
+    @RenderSection("Styles", required: false)
+</head>
+
+<body>
+    @{
+        var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    }
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <aside class="tp-sidebar @(ViewContext.HttpContext.Request.Cookies["tp-sidebar"] == "collapsed" ? "collapsed" : "")" id="tpSidebar">
+        <!-- Brand -->
+        <a href="/" class="sidebar-brand">
+            <div class="sidebar-brand-icon">
+                <i class="fas fa-mail-bulk"></i>
+            </div>
+            <span class="sidebar-brand-text">TasraPosta</span>
+        </a>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            <div class="sidebar-nav-label">Ana Menü</div>
+
+            <a href="/" class="sidebar-link @(currentController == "Home" ? "active" : "")" title="Ana Sayfa">
+                <i class="fas fa-home"></i>
+                <span class="sidebar-link-text">Ana Sayfa</span>
+            </a>
+
+            <a href="/Uploads" class="sidebar-link @(currentController == "Uploads" ? "active" : "")" title="Excel İçe Aktar">
+                <i class="fas fa-file-excel"></i>
+                <span class="sidebar-link-text">Excel İçe Aktar</span>
+            </a>
+
+            <a href="/Records" class="sidebar-link @(currentController == "Records" ? "active" : "")" title="Kayıtları Yönet">
+                <i class="fas fa-list"></i>
+                <span class="sidebar-link-text">Kayıtları Yönet</span>
+            </a>
+
+            <a href="/Labels" class="sidebar-link @(currentController == "Labels" ? "active" : "")" title="Etiket Oluştur">
+                <i class="fas fa-tags"></i>
+                <span class="sidebar-link-text">Etiket Oluştur</span>
+            </a>
+
+            <div class="sidebar-nav-label">Yönetim</div>
+
+            <a href="/FixedImports" class="sidebar-link @(currentController == "FixedImports" ? "active" : "")" title="Sabit İçe Aktarım">
+                <i class="fas fa-database"></i>
+                <span class="sidebar-link-text">Sabit İçe Aktarım</span>
+            </a>
+
+            <a href="@Url.Action("Index", "Settings")" class="sidebar-link @(currentController == "Settings" ? "active" : "")" title="Ayarlar">
+                <i class="fas fa-cog"></i>
+                <span class="sidebar-link-text">Ayarlar</span>
+            </a>
+        </nav>
+
+        <!-- Sidebar Footer: Collapse Toggle -->
+        <div class="sidebar-footer">
+            <button class="sidebar-toggle-btn" id="sidebarToggle" title="Menüyü Daralt/Genişlet">
+                <i class="fas fa-chevron-left"></i>
+                <span class="toggle-text">Daralt</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Sidebar mobile overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ═══════════════════ TOP BAR ═══════════════════ -->
+    <header class="tp-topbar">
+        <div class="topbar-left">
+            <!-- Mobile hamburger -->
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Menüyü aç">
+                <i class="fas fa-bars"></i>
+            </button>
+            <!-- Breadcrumb -->
+            <div class="topbar-breadcrumb">
+                <a href="/"><i class="fas fa-home"></i></a>
+                <span class="separator"><i class="fas fa-chevron-right"></i></span>
+                <span class="current">@ViewData["Title"]</span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            @if (IsSectionDefined("ActionButtons"))
+            {
+                <div class="d-flex gap-2 flex-wrap">
+                    @RenderSection("ActionButtons", required: false)
+                </div>
+            }
+            <!-- Theme Toggle -->
+            <button class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+                <i class="fas fa-sun icon-sun"></i>
+                <i class="fas fa-moon icon-moon"></i>
+            </button>
+            <!-- User Menu -->
+            <div class="dropdown">
+                <button class="topbar-user dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="topbar-user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span class="topbar-user-name">Admin</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="@Url.Action("Index", "Settings")">
+                            <i class="fas fa-cog me-2"></i>Ayarlar
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="/" title="Ana Sayfaya Dön">
+                            <i class="fas fa-right-from-bracket me-2"></i>Çıkış
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+    <main class="tp-main">
+        <!-- Toast Container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- TempData Alerts -->
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show slide-in-up" role="alert">
+                <i class="fas fa-check-circle"></i>
+                <div>@TempData["Success"]</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show slide-in-up" role="alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>@TempData["Error"]</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+            </div>
+        }
+        @if (TempData["Warning"] != null)
+        {
+            <div class="alert alert-warning alert-dismissible fade show slide-in-up" role="alert">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>@TempData["Warning"]</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+            </div>
+        }
+
+        <!-- Page Content -->
+        @RenderBody()
+    </main>
+
+    <!-- ═══════════════════ FOOTER ═══════════════════ -->
+    <footer class="tp-footer">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>&copy; @DateTime.Now.Year TasraPostaManager — Profesyonel Posta Yönetim Sistemi</span>
+            <small style="opacity: 0.7;">v3.0 | Modern Arayüz</small>
+        </div>
+    </footer>
+
+    <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Site JS -->
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

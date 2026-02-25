@@ -1,0 +1,646 @@
+@model List<TasraPostaManager.Models.PostaRecord>
+@{
+    ViewData["Title"] = "Etiket & Liste Oluşturma";
+
+    var selectedCount = Model?.Count ?? 0;
+    bool hasOverflowError = TempData["OverflowError"] != null;
+    string overflowMsg = TempData["OverflowError"] as string ?? "";
+    bool showForceSave = TempData["ShowForceSave"] as bool? ?? false;
+
+    // Viewbag değerlerini güvenli değişkenlere al (DÜZELTME: Casting güvenli hale getirildi)
+    int barcodeFontSize = ViewBag.BarcodeFontSize as int? ?? 8;
+    int barcodeTextScale = ViewBag.BarcodeTextScalePercent as int? ?? 100;
+    bool includeBarcode = ViewBag.IncludeBarcode as bool? ?? false;
+
+    // Liste Ayarları
+    bool listShowRow = ViewBag.ListShowRowNumber as bool? ?? true;
+    bool listShowMuhabere = ViewBag.ListShowMuhabere as bool? ?? true;
+    bool listShowBarcode = ViewBag.ListShowBarcode as bool? ?? true;
+    bool listShowReceiver = ViewBag.ListShowReceiver as bool? ?? true;
+    bool listShowAmount = ViewBag.ListShowAmount as bool? ?? true;
+    bool listShowDate = ViewBag.ListShowDate as bool? ?? true;
+    bool listShowSignature = ViewBag.ListShowSignature as bool? ?? true;
+    int listFontSize = ViewBag.ListFontSize as int? ?? 10;
+
+    // PaperSize ve Template'i string'e çevir
+    string paperSizeStr = ViewBag.PaperSize != null ? ViewBag.PaperSize.ToString() : "A4";
+    string templateStr = ViewBag.Template != null ? ViewBag.Template.ToString() : "A4_3x7_70x38";
+    string orientationStr = ViewBag.Orientation != null ? ViewBag.Orientation.ToString() : "Portrait";
+}
+
+@section ActionButtons {
+    <div class="d-flex gap-2 align-items-center">
+        <a asp-controller="Records" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Kayıtlara Dön
+        </a>
+    </div>
+}
+
+<div class="container-fluid mt-3">
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="alert alert-info d-flex justify-content-between align-items-center py-2 px-3">
+                <div>
+                    <i class="fas fa-info-circle me-2"></i>
+                    Seçili kayıt sayısı: <strong>@selectedCount</strong>
+                </div>
+                <div class="small text-muted">
+                    Etiket ve liste ayarlarını düzenleyip ardından <strong>Detaylı Rapor</strong> ile önizleme alabilir veya <strong>Etiket Oluştur / Teslim Listesi Oluştur</strong> ile doğrudan PDF üretebilirsiniz.
+                </div>
+            </div>
+        </div>
+
+        @if (hasOverflowError)
+        {
+            <div class="col-12">
+                <div class="alert alert-warning border-warning">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @overflowMsg
+                        </div>
+                        @if (showForceSave)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="submitForceSave()">
+                                <i class="fas fa-exclamation-circle me-1"></i>
+                                Buna rağmen kaydet &amp; devam et
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="col-lg-7 col-md-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-cogs me-2"></i>Etiket &amp; Liste Ayarları
+                        </h6>
+                        <small class="opacity-75">Çıktı tipine göre dinamik ayarlar</small>
+                    </div>
+                </div>
+                <div class="card-body">
+
+                    <form asp-action="GenerateList" asp-controller="Labels" method="post" id="generateForm" target="downloadFrame">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="selected" value="@ViewBag.SelectedString" />
+                        <input type="hidden" name="forceSave" id="forceSaveInput" value="false" />
+                        <input type="hidden" name="previewMode" id="previewModeInput" value="false" />
+
+                        <div class="p-3 mb-4 rounded border border-primary bg-primary bg-opacity-10">
+                            <label class="form-label fw-bold d-block mb-2 text-primary">Çıktı Tipi:</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="outputType" id="outPdf" value="pdf" checked autocomplete="off">
+                                <label class="btn btn-outline-primary" for="outPdf">
+                                    <i class="fas fa-th me-2"></i>Etiket Baskısı (PDF)
+                                </label>
+
+                                <input type="radio" class="btn-check" name="outputType" id="outList" value="list" autocomplete="off">
+                                <label class="btn btn-outline-primary" for="outList">
+                                    <i class="fas fa-list-ol me-2"></i>Teslim Listesi (PDF)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="labelSpecificSettings">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Şablon</label>
+                                    <select name="Template" class="form-select form-select-sm save-local" id="quickTemplateSelect">
+                                        <!option value="A4_3x7_70x38" @(templateStr == "A4_3x7_70x38" ? "selected" : "")>A4 - 3 x 7 - 70 x 38 mm</!option>
+                                        <!option value="A4_2x8_100x38" @(templateStr == "A4_2x8_100x38" ? "selected" : "")>A4 - 2 x 8 - 100 x 38 mm</!option>
+                                        <!option value="A4_65" @(templateStr == "A4_65" ? "selected" : "")>A4 - 65 Etiket (38.1 x 21.2 mm)</!option>
+                                        <!option value="Custom" @(templateStr == "Custom" ? "selected" : "")>Özel (mm ile ayarla)</!option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Kağıt Boyutu</label>
+                                    <select name="PaperSize" class="form-select form-select-sm save-local" id="paperSizeSelect">
+                                        <!option value="A4" @(paperSizeStr == "A4" ? "selected" : "")>A4 (210 x 297 mm)</!option>
+                                        <!option value="A5" @(paperSizeStr == "A5" ? "selected" : "")>A5 (148 x 210 mm)</!option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Yön</label>
+                                    <select name="Orientation" class="form-select form-select-sm save-local" id="orientationSelect">
+                                        <!option value="Portrait" @(orientationStr == "Portrait" ? "selected" : "")>Dikey</!option>
+                                        <!option value="Landscape" @(orientationStr == "Landscape" ? "selected" : "")>Yatay</!option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label fw-bold small">Sol Boşluk (mm)</label>
+                                    <input type="number" name="LeftMarginMm" class="form-control form-control-sm save-local" id="inpLeft" value="@ViewBag.DefaultMarginLeft" step="0.1" oninput="updateGridPreview()" />
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label fw-bold small">Üst Boşluk (mm)</label>
+                                    <input type="number" name="TopMarginMm" class="form-control form-control-sm save-local" id="inpTop" value="@ViewBag.DefaultMarginTop" step="0.1" oninput="updateGridPreview()" />
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label fw-bold small">Yatay Aralık (mm)</label>
+                                    <input type="number" name="HorizontalGapMm" class="form-control form-control-sm save-local" id="inpGapH" value="@ViewBag.DefaultHorizontalGap" step="0.1" oninput="updateGridPreview()" />
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label fw-bold small">Dikey Aralık (mm)</label>
+                                    <input type="number" name="VerticalGapMm" class="form-control form-control-sm save-local" id="inpGapV" value="@ViewBag.DefaultVerticalGap" step="0.1" oninput="updateGridPreview()" />
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-2 col-6">
+                                    <label class="form-label fw-bold small">Sütun</label>
+                                    <input type="number" id="inpCols" name="Columns" class="form-control form-control-sm save-local" value="@ViewBag.DefaultColumns" min="1" oninput="updateGridPreview()" />
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <label class="form-label fw-bold small">Satır</label>
+                                    <input type="number" id="inpRows" name="Rows" class="form-control form-control-sm save-local" value="@ViewBag.DefaultRows" min="1" oninput="updateGridPreview()" />
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <label class="form-label fw-bold small">En (mm)</label>
+                                    <input type="number" id="inpWidth" name="LabelWidthMm" class="form-control form-control-sm save-local" value="@ViewBag.DefaultLabelWidth" step="0.1" oninput="updateGridPreview()" />
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <label class="form-label fw-bold small">Boy (mm)</label>
+                                    <input type="number" id="inpHeight" name="LabelHeightMm" class="form-control form-control-sm save-local" value="@ViewBag.DefaultLabelHeight" step="0.1" oninput="updateGridPreview()" />
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label fw-bold small">Genel Yazı Punto (pt)</label>
+                                    <input type="number" name="FontSize" id="inpFontSize" class="form-control form-control-sm save-local" value="@ViewBag.DefaultFontSize" min="6" max="24" />
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4 col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input save-local" type="checkbox" name="IncludeBarcode" id="chkIncludeBarcode" value="true" @(includeBarcode ? "checked" : "")>
+                                        <input type="hidden" name="IncludeBarcode" value="false" />
+                                        <label class="form-check-label fw-bold small" for="chkIncludeBarcode">
+                                            Barkod Görseli Göster
+                                        </label>
+                                    </div>
+                                    <div class="form-text small">Etiket veya Liste üzerinde barkod çizgilerini gösterir.</div>
+                                </div>
+
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label fw-bold small">Barkod Metni Boyutu (pt)</label>
+                                    <input type="number" class="form-control form-control-sm save-local" name="BarcodeFontSize" id="barcodeFontSize" value="@barcodeFontSize" min="4" max="20" />
+                                    <div class="form-text small">Boş bırakılırsa otomatik seçilir.</div>
+                                </div>
+
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label fw-bold small">Barkod Metni Ölçeği (%)</label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="range" class="form-range flex-grow-1 save-local" id="barcodeScale" name="BarcodeTextScalePercent" min="50" max="200" step="5" value="@barcodeTextScale" />
+                                        <span id="scaleValue" class="small fw-bold">@barcodeTextScale%</span>
+                                    </div>
+                                    <div class="form-text small">Barkod altındaki RR numara büyüklüğü.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="listSpecificSettings" class="d-none">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label fw-bold small">Liste Yazı Punto (pt)</label>
+                                    <input type="number" id="inpListFontSize" name="ListFontSize" class="form-control form-control-sm list-toggle save-local" value="@listFontSize" min="6" max="18" />
+                                </div>
+                                <div class="col-md-9 col-12">
+                                    <label class="form-label fw-bold small">Gösterilecek Alanlar</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input list-toggle save-local" type="checkbox" id="chkListRow" name="ListShowRowNumber" value="true" @(listShowRow ? "checked" : "")>
+                                            <input type="hidden" name="ListShowRowNumber" value="false" />
+                                            <label class="form-check-label small" for="chkListRow">Satır No</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input list-toggle save-local" type="checkbox" id="chkListMuhabere" name="ListShowMuhabere" value="true" @(listShowMuhabere ? "checked" : "")>
+                                            <input type="hidden" name="ListShowMuhabere" value="false" />
+                                            <label class="form-check-label small" for="chkListMuhabere">Muhabere No</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input list-toggle save-local" type="checkbox" id="chkListBarcode" name="ListShowBarcode" value="true" @(listShowBarcode ? "checked" : "")>
+                                            <input type="hidden" name="ListShowBarcode" value="false" />
+                                            <label class="form-check-label small" for="chkListBarcode">Barkod Sütunu</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input list-toggle save-local" type="checkbox" id="chkListReceiver" name="ListShowReceiver" value="true" @(listShowReceiver ? "checked" : "")>
+                                            <input type="hidden" name="ListShowReceiver" value="false" />
+                                            <label class="form-check-label small" for="chkListReceiver">Alıcı Adı</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input list-toggle save-local" type="checkbox" id="chkListAmount" name="ListShowAmount" value="true" @(listShowAmount ? "checked" : "")>
+                                            <input type="hidden" name="ListShowAmount" value="false" />
+                                            <label class="form-check-label small" for="chkListAmount">Tutar</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input list-toggle save-local" type="checkbox" id="chkListDate" name="ListShowDate" value="true" @(listShowDate ? "checked" : "")>
+                                            <input type="hidden" name="ListShowDate" value="false" />
+                                            <label class="form-check-label small" for="chkListDate">Tarih</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input list-toggle save-local" type="checkbox" id="chkListSignature" name="ListShowSignature" value="true" @(listShowSignature ? "checked" : "")>
+                                            <input type="hidden" name="ListShowSignature" value="false" />
+                                            <label class="form-check-label small" for="chkListSignature">İmza</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="openFullPreview()">
+                                    <i class="fas fa-search-plus me-1"></i> Detaylı Rapor
+                                </button>
+
+                                <button type="submit" class="btn btn-primary px-4 py-2 fw-bold shadow-sm" id="mainSubmitBtn" onclick="handleFormSubmit(this)">
+                                    <i class="fas fa-print me-2"></i> <span id="submitBtnText">Etiket Oluştur</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <iframe name="downloadFrame" id="downloadFrame" style="display:none; width:0; height:0; border:0;"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5 col-md-12" id="previewCol">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-bottom py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-eye me-2"></i>Önizleme
+                        </h6>
+                        <small id="previewInfoText" class="text-muted small">
+                            Etiket ızgarası, seçtiğiniz şablona göre gösterilir.
+                        </small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="preview-wrapper border border-secondary border-opacity-50 rounded position-relative overflow-hidden"
+                         style="width: 210mm; height: 297mm; transform-origin: top center; transform: scale(0.65);">
+
+                        <div id="gridContainer" style="width: 100%; height: 100%; display:grid;"></div>
+
+                        <div id="listPreviewContainer" style="width: 100%; height: 100%; display:none; flex-direction:column; padding: 10mm;">
+                            <div class="text-center mb-3 pb-2 border-bottom border-dark">
+                                <h4 class="fw-bold mb-1">PTT TOPLU GÖNDERİ TESLİM LİSTESİ</h4>
+                                <small class="text-muted">Tarih: @DateTime.Now.ToString("dd.MM.yyyy") - Toplam Kayıt: @selectedCount</small>
+                            </div>
+                            <div class="w-100 border border-dark border-bottom-0">
+                                <div id="dynamicListHeader" class="d-flex border-bottom border-dark bg-light fw-bold small"></div>
+                                <div id="dynamicListRows"></div>
+                            </div>
+                            <div class="d-flex justify-content-between border border-dark border-top-0 mt-auto pt-2 px-2 small">
+                                <div>SAYFA: 1 / 1</div>
+                                <div>İŞLEM YAPAN: ................................</div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="mt-2 text-muted small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Bu önizleme, gerçek PDF çıktısının yerleşimi hakkında fikir vermek içindir. Hassas sınamalar için <strong>Detaylı Rapor</strong> butonunu kullanabilirsiniz.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 1. Önce LocalStorage'dan verileri yükle (Persistence Çözümü)
+            loadFromLocal();
+
+            // 2. Output tipi ayarı
+            handleOutputTypeChange();
+
+            // Output değişimi
+            document.querySelectorAll('input[name="outputType"]').forEach(r => {
+                r.addEventListener('change', handleOutputTypeChange);
+            });
+
+            // Liste ayarları değişimi
+            document.querySelectorAll('.list-toggle').forEach(el => {
+                el.addEventListener('change', updateListPreview);
+            });
+
+            // Barkod slider
+            const scaleInput = document.getElementById('barcodeScale');
+            const scaleValue = document.getElementById('scaleValue');
+            if (scaleInput && scaleValue) {
+                scaleInput.addEventListener('input', function () {
+                    scaleValue.textContent = this.value + '%';
+                });
+            }
+
+            // Template dropdown değişimi
+            const templateSelect = document.getElementById('quickTemplateSelect');
+            if (templateSelect) {
+                templateSelect.addEventListener('change', function() {
+                    saveToLocal(this);
+                    if (this.value === 'Custom') {
+                        alert("Özel şablon seçildi. Manuel ayarları değiştirebilirsiniz.");
+                    } else {
+                        alert("Hazır şablon seçildi. Ayarlar otomatik güncellenecek.");
+                    }
+                });
+            }
+
+            // Tüm 'save-local' sınıfına sahip inputlara dinleyici ekle
+            document.querySelectorAll('.save-local').forEach(el => {
+                el.addEventListener('change', function() {
+                    saveToLocal(this);
+                    if (el.id === 'inpCols' || el.id === 'inpRows' ||
+                        el.id === 'inpWidth' || el.id === 'inpHeight' ||
+                        el.id === 'inpLeft' || el.id === 'inpTop' ||
+                        el.id === 'inpGapH' || el.id === 'inpGapV') {
+                        updateGridPreview();
+                    }
+                });
+                // Range ve number için input event'i de olsun (anlık)
+                if(el.type === 'number' || el.type === 'range') {
+                    el.addEventListener('input', function() {
+                        saveToLocal(this);
+                        if (el.id === 'inpCols' || el.id === 'inpRows' ||
+                            el.id === 'inpWidth' || el.id === 'inpHeight' ||
+                            el.id === 'inpLeft' || el.id === 'inpTop' ||
+                            el.id === 'inpGapH' || el.id === 'inpGapV') {
+                            updateGridPreview();
+                        }
+                    });
+                }
+            });
+            // İlk grid önizlemeyi çalıştır
+            setTimeout(updateGridPreview, 200);
+        });
+
+        // --- LOCAL STORAGE PERSISTENCE (TARAYICI HAFIZASI) ---
+        function saveToLocal(element) {
+            if(!element || !element.id) return;
+            const key = 'TasraLabelSetting_' + element.id;
+            let value = element.value;
+            if(element.type === 'checkbox') {
+                value = element.checked ? 'true' : 'false';
+            }
+            localStorage.setItem(key, value);
+        }
+
+        function loadFromLocal() {
+            document.querySelectorAll('.save-local').forEach(el => {
+                if(!el.id) return;
+                const key = 'TasraLabelSetting_' + el.id;
+                const savedVal = localStorage.getItem(key);
+                if(savedVal !== null) {
+                    if(el.type === 'checkbox') {
+                        el.checked = (savedVal === 'true');
+                        // Checkbox için hidden input'u da güncelle
+                        const hiddenInput = el.parentElement.querySelector('input[type="hidden"]');
+                        if (hiddenInput) {
+                            hiddenInput.value = el.checked ? 'false' : 'false';
+                        }
+                    } else {
+                        el.value = savedVal;
+                        // Slider ise label'ı da güncelle
+                        if(el.id === 'barcodeScale') {
+                             const sv = document.getElementById('scaleValue');
+                             if(sv) sv.textContent = savedVal + '%';
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- FORM SUBMIT UI ---
+        function handleFormSubmit(btn) {
+            const originalText = document.getElementById('submitBtnText').innerText;
+            const icon = btn.querySelector('i');
+
+            // UI Feedback
+            btn.disabled = true;
+            document.getElementById('submitBtnText').innerText = 'İşleniyor...';
+            if(icon) icon.className = 'fas fa-spinner fa-spin me-2';
+
+            // Formu manuel submit et
+            document.getElementById('generateForm').submit();
+
+            // Iframe submit olduğu için sayfa yenilenmez.
+            // Butonu 3-4 saniye sonra eski haline getir.
+            setTimeout(() => {
+                btn.disabled = false;
+                document.getElementById('submitBtnText').innerText = originalText;
+                if(icon) icon.className = 'fas fa-print me-2';
+            }, 3000);
+        }
+
+        function handleOutputTypeChange() {
+            var isList = document.getElementById('outList').checked;
+            var labelSettingsPanel = document.getElementById('labelSpecificSettings');
+            var listSettingsPanel = document.getElementById('listSpecificSettings');
+
+            var previewCol = document.getElementById('previewCol');
+            var btnText = document.getElementById('submitBtnText');
+            var submitBtn = document.getElementById('mainSubmitBtn');
+            var previewInfoText = document.getElementById('previewInfoText');
+
+            var gridContainer = document.getElementById('gridContainer');
+            var listContainer = document.getElementById('listPreviewContainer');
+
+            if (isList) {
+                // LİSTE MODU
+                labelSettingsPanel.classList.add('d-none');
+                listSettingsPanel.classList.remove('d-none');
+                gridContainer.style.display = 'none';
+                listContainer.style.display = 'flex';
+                btnText.innerText = "Teslim Listesi Oluştur";
+                submitBtn.classList.remove('btn-primary');
+                submitBtn.classList.add('btn-success');
+                previewInfoText.innerHTML = '<i class="fas fa-list-ol me-1"></i> Liste kolonlarını seçerek önizlemeyi görebilirsiniz.';
+                setTimeout(updateListPreview, 50);
+            } else {
+                // ETİKET MODU
+                labelSettingsPanel.classList.remove('d-none');
+                listSettingsPanel.classList.add('d-none');
+                gridContainer.style.display = 'grid';
+                listContainer.style.display = 'none';
+                btnText.innerText = "Etiket Oluştur";
+                submitBtn.classList.remove('btn-success');
+                submitBtn.classList.add('btn-primary');
+                previewInfoText.innerHTML = '<i class="fas fa-info-circle me-1"></i> Gri alanlar kenar boşluklarını, mavi kutular etiketleri temsil eder.';
+                setTimeout(updateGridPreview, 100);
+            }
+        }
+
+        function updateGridPreview() {
+            const cols = parseInt(document.getElementById('inpCols').value) || 1;
+            const rows = parseInt(document.getElementById('inpRows').value) || 1;
+            const w_mm = parseFloat(document.getElementById('inpWidth').value) || 70;
+            const h_mm = parseFloat(document.getElementById('inpHeight').value) || 37;
+            const top_mm = parseFloat(document.getElementById('inpTop').value) || 0;
+            const left_mm = parseFloat(document.getElementById('inpLeft').value) || 0;
+            const gapH_mm = parseFloat(document.getElementById('inpGapH').value) || 0;
+            const gapV_mm = parseFloat(document.getElementById('inpGapV').value) || 0;
+
+            const container = document.getElementById('gridContainer');
+            container.innerHTML = '';
+            const pageW_mm = 210;
+            const pageH_mm = 297;
+
+            const pxPerMmX = container.clientWidth / pageW_mm;
+            const pxPerMmY = container.clientHeight / pageH_mm;
+
+            const marginTopPx = top_mm * pxPerMmY;
+            const marginLeftPx = left_mm * pxPerMmX;
+            const labelWidthPx = w_mm * pxPerMmX;
+            const labelHeightPx = h_mm * pxPerMmY;
+            const gapHPx = gapH_mm * pxPerMmX;
+            const gapVPx = gapV_mm * pxPerMmY;
+
+            // Margin alanını göster
+            const marginDiv = document.createElement('div');
+            marginDiv.style.position = 'absolute';
+            marginDiv.style.top = marginTopPx + 'px';
+            marginDiv.style.left = marginLeftPx + 'px';
+            marginDiv.style.width = ((cols * labelWidthPx) + ((cols - 1) * gapHPx)) + 'px';
+            marginDiv.style.height = ((rows * labelHeightPx) + ((rows - 1) * gapVPx)) + 'px';
+            marginDiv.style.border = '1px dashed rgba(0,0,0,0.3)';
+            marginDiv.style.backgroundColor = 'rgba(0,0,0,0.05)';
+            marginDiv.style.pointerEvents = 'none';
+            container.appendChild(marginDiv);
+
+            // Etiketleri oluştur
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const labelDiv = document.createElement('div');
+                    labelDiv.style.position = 'absolute';
+                    labelDiv.style.width = labelWidthPx + 'px';
+                    labelDiv.style.height = labelHeightPx + 'px';
+                    labelDiv.style.left = (marginLeftPx + c * (labelWidthPx + gapHPx)) + 'px';
+                    labelDiv.style.top = (marginTopPx + r * (labelHeightPx + gapVPx)) + 'px';
+                    labelDiv.style.border = '1px solid rgba(0, 123, 255, 0.5)';
+                    labelDiv.style.backgroundColor = 'rgba(0, 123, 255, 0.05)';
+                    labelDiv.style.pointerEvents = 'none';
+
+                    // Etiket numarasını göster
+                    const labelNumber = document.createElement('div');
+                    labelNumber.style.position = 'absolute';
+                    labelNumber.style.top = '2px';
+                    labelNumber.style.left = '2px';
+                    labelNumber.style.fontSize = '8px';
+                    labelNumber.style.color = 'rgba(0, 123, 255, 0.7)';
+                    labelNumber.innerText = `${c+1}x${r+1}`;
+                    labelDiv.appendChild(labelNumber);
+
+                    container.appendChild(labelDiv);
+                }
+            }
+        }
+
+        function updateListPreview() {
+            const showRow = document.getElementById('chkListRow').checked;
+            const showMuhabere = document.getElementById('chkListMuhabere').checked;
+            const showBarcode = document.getElementById('chkListBarcode').checked;
+            const showReceiver = document.getElementById('chkListReceiver').checked;
+            const showAmount = document.getElementById('chkListAmount').checked;
+            const showDate = document.getElementById('chkListDate').checked;
+            const showSignature = document.getElementById('chkListSignature').checked;
+            const fontSize = document.getElementById('inpListFontSize').value || 10;
+
+            const headerRow = document.getElementById('dynamicListHeader');
+            const bodyRows = document.getElementById('dynamicListRows');
+            headerRow.innerHTML = '';
+            bodyRows.innerHTML = '';
+
+            const colDefs = [];
+            if (showRow)      colDefs.push({ title: '#',           type: 'fixed', widthMm: 9,  align: 'center' });
+            if (showMuhabere) colDefs.push({ title: 'Muhabere No', type: 'fixed', widthMm: 21, align: 'center' });
+
+            const receiverGrow = showBarcode ? 4 : 6;
+            if (showReceiver) colDefs.push({ title: 'Alıcı Adı',   type: 'flex',  grow: receiverGrow,     align: 'left' });
+            if (showAmount)   colDefs.push({ title: 'Tutar',       type: 'fixed', widthMm: 18, align: 'center' });
+            if (showDate)     colDefs.push({ title: 'Tarih',       type: 'fixed', widthMm: 21, align: 'center' });
+            if (showSignature) colDefs.push({ title: 'İmza',       type: 'fixed', widthMm: 14, align: 'center' });
+            if (showBarcode)  colDefs.push({ title: 'Barkod',      type: 'flex',  grow: 2,     align: 'center' });
+
+            // Header
+            colDefs.forEach(col => {
+                const cell = document.createElement('div');
+                cell.className = 'p-1 border-end border-dark d-flex align-items-center justify-content-center text-truncate';
+                cell.innerText = col.title;
+                if (col.type === 'fixed') {
+                    cell.style.width = col.widthMm + 'mm';
+                    cell.style.flexShrink = '0';
+                } else {
+                    cell.style.flexGrow = col.grow;
+                    cell.style.width = '0';
+                }
+                headerRow.appendChild(cell);
+            });
+            if (headerRow.lastChild) headerRow.lastChild.classList.remove('border-end');
+
+            // Örnek Satırlar (5 satır)
+            for (let i = 1; i <= 5; i++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'd-flex border-bottom border-secondary border-opacity-25';
+                rowDiv.style.fontSize = fontSize + 'pt';
+                colDefs.forEach(col => {
+                    const cell = document.createElement('div');
+                    cell.className = 'p-1 border-end border-secondary border-opacity-25 d-flex align-items-center text-truncate';
+
+                    if (col.align === 'center') cell.classList.add('justify-content-center');
+                    else cell.classList.add('justify-content-start');
+
+                    if (col.title === '#')              cell.innerText = i;
+                    else if (col.title === 'Muhabere No') cell.innerText = '2025/10' + i;
+                    else if (col.title === 'Alıcı Adı') cell.innerText = 'Örnek Alıcı ' + i;
+                    else if (col.title === 'Tutar')     cell.innerText = '100,00';
+                    else if (col.title === 'Tarih')     cell.innerText = '01.01.2025';
+                    else if (col.title === 'İmza')      cell.innerText = '';
+                    else if (col.title === 'Barkod')    cell.innerText = '123456789012';
+
+                    if (col.type === 'fixed') {
+                        cell.style.width = col.widthMm + 'mm';
+                        cell.style.flexShrink = '0';
+                    } else {
+                        cell.style.flexGrow = col.grow;
+                        cell.style.width = '0';
+                    }
+                    rowDiv.appendChild(cell);
+                });
+                if (rowDiv.lastChild) rowDiv.lastChild.classList.remove('border-end');
+                bodyRows.appendChild(rowDiv);
+            }
+        }
+
+        function openFullPreview() {
+            var form = document.getElementById('generateForm');
+            var originalAction = form.action;
+            var originalTarget = form.target;
+            var isList = document.getElementById('outList').checked;
+            if (isList) {
+                form.action = '@Url.Action("PreviewList", "Labels")';
+            } else {
+                form.action = '@Url.Action("PreviewLabels", "Labels")';
+            }
+
+            form.target = "_blank";
+            form.submit();
+
+            form.action = originalAction;
+            form.target = originalTarget;
+        }
+
+        function submitForceSave() {
+            document.getElementById('forceSaveInput').value = "true";
+            // Submit işlemini handleFormSubmit fonksiyonuna yönlendiriyoruz ki feedback alalım
+            handleFormSubmit(document.getElementById('mainSubmitBtn'));
+        }
+    </script>
+}

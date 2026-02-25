@@ -1,0 +1,592 @@
+﻿@model TasraPostaManager.Models.SettingsViewModel
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@using TasraPostaManager.Models
+
+@{
+    // LabelSettingsV2 için prefix'li ViewData oluşturuyoruz
+    var labelSettingsViewData = new ViewDataDictionary(ViewData);
+    labelSettingsViewData.TemplateInfo.HtmlFieldPrefix = "LabelSettingsV2";
+
+    ViewData["Title"] = "Ayarlar";
+    var label = Model.LabelSettingsV2 ?? new LabelSettings();
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-cogs text-primary me-2"></i>Uygulama Ayarları
+                    </h1>
+                    <p class="text-muted mb-0">
+                        PDF çıktı yolları, varsayılan gönderen ve barkod ayarlarını buradan yapılandırabilirsiniz.
+                    </p>
+                </div>
+                <div>
+                    <a href="/Labels" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-tags me-1"></i>Etiket Paneline Dön
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertPlaceholder"></div>
+
+    @* Sunucu taraflı TempData mesajları *@
+    @if (TempData["Success"] is string successMessage && !string.IsNullOrWhiteSpace(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @Html.Raw(successMessage)
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Html.Raw(errorMessage)
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+        </div>
+    }
+
+    @* Eski Message alanını da koruyoruz, başka aksiyonlardan gelebilir *@
+    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    {
+        <div class="alert @(Model.SettingsSaved ? "alert-success" : "alert-warning") alert-dismissible fade show" role="alert">
+            @Html.Raw(Model.Message)
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+        </div>
+    }
+
+    <form asp-action="Index" asp-controller="Settings" method="post" class="needs-validation" novalidate id="settingsForm">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-0 pb-0">
+                        <h5 class="card-title mb-1">
+                            <i class="fas fa-folder-open text-primary me-2"></i>Dosya ve Gönderen Ayarları
+                        </h5>
+                        <p class="text-muted small mb-0">
+                            PDF çıktılarının kaydedileceği klasörleri ve varsayılan gönderen bilgisini yönetin.
+                        </p>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="PdfOutputPath" class="form-label fw-semibold">PDF Çıktı Klasörü *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-save"></i></span>
+                                    <input asp-for="PdfOutputPath" class="form-control" required
+                                           placeholder="D:\TasraPostaManagerOutput" />
+                                </div>
+                                <div class="invalid-feedback">PDF çıktı klasörü zorunludur.</div>
+                                <small class="form-text text-muted">PDF dosyalarının kaydedileceği ana klasör</small>
+                            </div>
+
+                            <div class="col-md-6" id="sender-settings-card">
+                                <label asp-for="DefaultGonderen" class="form-label fw-semibold">Varsayılan Gönderen *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <textarea asp-for="DefaultGonderen"
+                                              class="form-control"
+                                              rows="4"
+                                              required
+                                              id="DefaultGonderen"
+                                              placeholder="TAŞRA BELEDİYESİ&#x0a;YAZI İŞLERİ MÜDÜRLÜĞÜ&#x0a;PTT EVRAK SERVİSİ"></textarea>
+                                </div>
+                                <div class="invalid-feedback">Varsayılan gönderen bilgisi zorunludur.</div>
+                                <small class="form-text text-muted">
+                                    Gönderen bilgisi birden fazla satır içerebilir.
+                                    Örneğin:<br />
+                                    <code>TAŞRA BELEDİYESİ<br />YAZI İŞLERİ MÜDÜRLÜĞÜ<br />PTT EVRAK SERVİSİ</code>
+                                </small>
+
+                                <div class="card mt-2 border-0 shadow-sm">
+                                    <div class="card-header py-1 px-2 bg-light d-flex align-items-center">
+                                        <i class="fas fa-eye me-2 text-secondary"></i>
+                                        <span class="small fw-semibold">Etiket Üzerindeki Görünümü</span>
+                                    </div>
+                                    <div class="card-body py-2 px-2">
+                                        <div class="border rounded p-2 bg-white">
+                                            <small class="text-muted d-block mb-1">Gönderen</small>
+                                            <div id="defaultSenderPreviewText" class="small lh-sm"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="PdfExternalPath" class="form-label fw-semibold">Harici PDF Klasörü</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-hdd"></i></span>
+                                    <input asp-for="PdfExternalPath" class="form-control"
+                                           placeholder="D:\HariciPDFKlasor" />
+                                </div>
+                                <small class="form-text text-muted">
+                                    @if (Model.IsExternalPathAvailable)
+                                    {
+                                        <span class="text-success">
+                                            <i class="fas fa-check-circle me-1"></i>Klasör mevcut ve erişilebilir
+                                        </span>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(Model.PdfExternalPath))
+                                    {
+                                        <span class="text-danger">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Klasör bulunamadı veya erişilemiyor
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>İsteğe bağlı: PDF'leri kopyalamak için harici bir klasör.</span>
+                                    }
+                                </small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="DefaultPaperSize" class="form-label fw-semibold">Varsayılan Kağıt Boyutu *</label>
+                                <select asp-for="DefaultPaperSize" class="form-select" required>
+                                    <option value="A4">A4 (210 x 297 mm)</option>
+                                    <option value="A5">A5 (148 x 210 mm)</option>
+                                </select>
+                                <div class="invalid-feedback">Varsayılan kağıt boyutu zorunludur.</div>
+                                <small class="form-text text-muted">Yeni etiketlerde kullanılacak varsayılan kağıt boyutu</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-0 pb-0">
+                        <h5 class="card-title mb-1">
+                            <i class="fas fa-barcode text-primary me-2"></i>Barkod Ayarları
+                        </h5>
+                        <p class="text-muted small mb-0">
+                            Barkod numaralandırma ve görsel ayarlarını buradan düzenleyin.
+                        </p>
+                    </div>
+	                    <div class="card-body">
+	                        <!-- ✅ Barkod Modu (Legacy / Pool) -->
+	                        <div class="row g-3 mb-3">
+	                            <div class="col-md-4">
+	                                <label asp-for="DefaultBarcodeMode" class="form-label fw-semibold"></label>
+	                                <select asp-for="DefaultBarcodeMode" class="form-select">
+	                                    <option value="Legacy">Legacy (Mevcut Üretim)</option>
+	                                    <option value="Pool">Pool (Havuzdan Claim)</option>
+	                                </select>
+	                                <small class="form-text text-muted">Pool seçilirse barkodlar BarcodePoolItems tablosundan claim edilir.</small>
+	                            </div>
+	                            <div class="col-md-4">
+	                                <label asp-for="BarcodePoolLowThreshold" class="form-label fw-semibold"></label>
+	                                <input asp-for="BarcodePoolLowThreshold" class="form-control" type="number" min="0" />
+	                                <small class="form-text text-muted">Kalan barkod bu eşikten azsa uyarı gösterilir.</small>
+	                            </div>
+	                            <div class="col-md-4">
+	                                <label class="form-label fw-semibold">Havuz İstatistik</label>
+	                                @if (Model.BarcodePoolStats != null)
+	                                {
+	                                    var s = Model.BarcodePoolStats;
+	                                    <div class="d-flex flex-wrap gap-2">
+	                                        <span class="badge bg-primary">Toplam: @s.Total</span>
+	                                        <span class="badge bg-success">Kalan: @s.Available</span>
+	                                        <span class="badge bg-secondary">Kullanılan: @s.Used</span>
+	                                        <span class="badge bg-warning text-dark">Pasif: @s.Disabled</span>
+	                                    </div>
+							@if (string.Equals(Model.DefaultBarcodeMode, "Pool", System.StringComparison.OrdinalIgnoreCase) && s.Available < Model.BarcodePoolLowThreshold)
+	                                    {
+	                                        <div class="alert alert-warning py-2 mt-2 mb-0">
+	                                            <i class="fas fa-exclamation-triangle me-1"></i>
+	                                            Havuz barkodları azalıyor: kalan <b>@s.Available</b> (eşik: @Model.BarcodePoolLowThreshold)
+	                                        </div>
+	                                    }
+	                                }
+	                                else
+	                                {
+	                                    <div class="text-muted small">(Migration uygulanmadıysa stats görünmeyebilir.)</div>
+	                                }
+	                            </div>
+	                        </div>
+
+	                        <!-- ✅ Pool Import (ayrı form) -->
+	                        @* NOT: HTML nested-form desteklemediği için burada gerçek <form> kullanmıyoruz.
+	                           Input/Button, sayfanın altında duran #barcodePoolImportForm'a bağlıdır. *@
+	                        <div class="border rounded-3 p-3 mb-4 bg-light">
+	                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+	                                <div>
+	                                    <div class="fw-semibold"><i class="fas fa-file-excel text-success me-1"></i> Barkod Havuzu Import</div>
+	                                    <div class="text-muted small">PTT’den gelen .xlsx dosyasını seçip içe aktarın. Duplicate barkodlar otomatik atlanır.</div>
+	                                </div>
+	                                <div class="d-flex align-items-center gap-2">
+	                                    <input form="barcodePoolImportForm" type="file" name="file" accept=".xlsx" class="form-control form-control-sm" style="max-width: 260px;" />
+	                                    <button form="barcodePoolImportForm" type="submit" class="btn btn-success btn-sm">
+	                                        <i class="fas fa-upload me-1"></i> İçe Aktar
+	                                    </button>
+	                                </div>
+	                            </div>
+	                        </div>
+
+	                        <!-- ✅ Pool Export (Kalan / Tümü / Snapshot) -->
+	                        <div class="border rounded-3 p-3 mb-4 bg-light">
+	                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+	                                <div>
+	                                    <div class="fw-semibold"><i class="fas fa-download text-primary me-1"></i> Barkod Havuzu Export</div>
+	                                    <div class="text-muted small">Kalan barkodları veya tüm havuzu CSV / Excel olarak dışa aktarın.</div>
+	                                </div>
+	                                <div class="d-flex align-items-center gap-2">
+	                                    <select form="barcodePoolExportForm" name="scope" class="form-select form-select-sm" style="max-width: 200px;">
+	                                        <option value="Remaining" selected>Kalan Barkodlar</option>
+	                                        <option value="All">Tümü (Kullanılan + Kullanılmayan)</option>
+	                                        <option value="Snapshot">Snapshot (Denetim)</option>
+	                                    </select>
+	                                    <select form="barcodePoolExportForm" name="format" class="form-select form-select-sm" style="max-width: 130px;">
+	                                        <option value="csv" selected>CSV</option>
+	                                        <option value="xlsx">Excel</option>
+	                                    </select>
+							        <div class="form-check form-check-inline ms-2">
+							            <input form="barcodePoolExportForm" class="form-check-input" type="checkbox" name="pttFormat" value="true" id="pttFormatExport" checked />
+							            <label class="form-check-label small" for="pttFormatExport">PTT format (başlıksız)</label>
+							        </div>
+	                                    <button form="barcodePoolExportForm" type="submit" class="btn btn-primary btn-sm">
+	                                        <i class="fas fa-file-export me-1"></i> Dışa Aktar
+	                                    </button>
+	                                </div>
+	                            </div>
+	                        </div>
+
+	                        @* Barkod ayarlarını partial ile yüklüyoruz *@
+                        @await Html.PartialAsync("_BarcodeSettingsPartial", Model)
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-0 pb-0">
+                        <h5 class="card-title mb-1">
+                            <i class="fas fa-th-large text-primary me-2"></i>Etiket & Sayfa Ayarları (v2)
+                        </h5>
+                        <p class="text-muted small mb-0">
+                            A4 / A5 üzerindeki etiket grid yapısını, satır/sütun ve boşluk ayarlarını burada belirleyin.
+                        </p>
+                    </div>
+                    <div class="card-body">
+                        @* LabelSettingsV2 için kapsayıcı DIV ekledik. AJAX burayı güncelleyecek. *@
+                        <div id="label-settings-container">
+                            @await Html.PartialAsync("_LabelSettingsV2Partial", Model.LabelSettingsV2, labelSettingsViewData)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex justify-content-between align-items-center">
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>Ayarları Kaydet
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="resetBarcodeSettings()">
+                    <i class="fas fa-barcode me-1"></i>Barkod Ayarlarını Sıfırla
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="resetAllSettings()">
+                    <i class="fas fa-bomb me-1"></i>Tüm Ayarları Sıfırla
+                </button>
+            </div>
+            <button type="button" class="btn btn-outline-info" onclick="testBarcodeGeneration()">
+                <i class="fas fa-vial me-1"></i>Barkod Testi Yap
+            </button>
+        </div>
+    </form>
+
+    @* Pool Import için ayrı form (nested-form problemi olmaması için) *@
+    <form id="barcodePoolImportForm" asp-action="ImportBarcodePool" asp-controller="Settings" method="post" enctype="multipart/form-data" class="d-none">
+        @Html.AntiForgeryToken()
+    </form>
+
+	@* Pool Export için ayrı form (download için) *@
+	<form id="barcodePoolExportForm" asp-action="ExportBarcodePool" asp-controller="Settings" method="post" class="d-none">
+		@Html.AntiForgeryToken()
+	</form>
+</div>
+
+@section Scripts {
+    <script>
+        // 🔹 BARKOD TEST FONKSIYONU
+        async function testBarcodeGeneration() {
+            try {
+                const response = await fetch('@Url.Action("TestBarcodeGeneration", "Settings")', {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showAlert('success', `Test Başarılı!<br>Oluşturulan Barkod: <strong>${data.barcode}</strong><br>Kalan: ${data.remainingCount} adet`);
+                } else {
+                    showAlert('danger', data.message || 'Barkod testi başarısız oldu.');
+                }
+            } catch (error) {
+                console.error('Barkod test hatası:', error);
+                showAlert('danger', 'Barkod testi sırasında bir hata oluştu.');
+            }
+        }
+
+        // 🔹 BARKOD AYARLARINI SIFIRLA
+        async function resetBarcodeSettings() {
+            if (!confirm('Barkod ayarlarını varsayılan değerlere sıfırlamak istediğinizden emin misiniz?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('@Url.Action("ResetBarcodeSettings", "Settings")', {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                });
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    showAlert('danger', 'Sıfırlama işlemi başarısız oldu.');
+                }
+            } catch (error) {
+                console.error('Sıfırlama hatası:', error);
+                showAlert('danger', 'Sıfırlama sırasında bir hata oluştu.');
+            }
+        }
+
+        // 🔹 TÜM AYARLARI SIFIRLA
+        async function resetAllSettings() {
+            if (!confirm('TÜM ayarları varsayılan değerlere sıfırlamak istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('@Url.Action("ResetAllSettings", "Settings")', {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    }
+                });
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    showAlert('danger', 'Sıfırlama işlemi başarısız oldu.');
+                }
+            } catch (error) {
+                console.error('Sıfırlama hatası:', error);
+                showAlert('danger', 'Sıfırlama sırasında bir hata oluştu.');
+            }
+        }
+
+        // 🔹 BARKOD PREVIEW GÜNCELLE
+        function updateBarcodePreview() {
+            const prefix = document.querySelector('[name="BarcodePrefix"]').value || '';
+            let startNumber = document.querySelector('[name="BarcodeStartNumber"]').value || '';
+            const digitCount = parseInt(document.querySelector('[name="BarcodeDigitCount"]').value || '0');
+            const suffix = document.querySelector('[name="BarcodeSuffix"]').value || '';
+
+            // Sadece rakam
+            startNumber = startNumber.replace(/\D/g, '');
+
+            if (digitCount > 0 && startNumber.length > digitCount) {
+                startNumber = startNumber.substring(0, digitCount);
+                document.querySelector('[name="BarcodeStartNumber"]').value = startNumber;
+            }
+
+            const numericPart = startNumber.padEnd(digitCount, '0');
+            const barcode = prefix + numericPart + suffix;
+            const totalLength = prefix.length + digitCount + suffix.length;
+
+            const previewEl = document.getElementById('barcodePreview');
+            const lengthEl = document.getElementById('previewLength');
+
+            if (previewEl) previewEl.textContent = barcode;
+            if (lengthEl) lengthEl.textContent = totalLength;
+        }
+
+        // 🔹 ŞABLON DEĞİŞİKLİĞİ İŞLEME (DÜZELTİLDİ: SERVER-SIDE RENDERING)
+        async function handleTemplateChange() {
+            const templateSelect = document.getElementById('labelTemplateSelect');
+            if (!templateSelect) return;
+
+            const selectedValue = templateSelect.value;
+            const currentValue = templateSelect.getAttribute('data-current-template');
+
+            if (!selectedValue || selectedValue === currentValue) {
+                updateLabelPreview();
+                return;
+            }
+
+            const request = {
+                NewTemplate: selectedValue,
+                PreviousTemplate: currentValue
+            };
+
+            // Kullanıcıya yükleniyor hissi ver
+            const container = document.getElementById('label-settings-container');
+            if (container) container.style.opacity = '0.5';
+
+            try {
+                const response = await fetch('@Url.Action("OnLabelTemplateChanged", "Settings")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify(request)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Sunucu hatası: ' + response.status);
+                }
+
+                // Artık JSON değil, HTML (Partial View) alıyoruz.
+                const htmlContent = await response.text();
+
+                if (container) {
+                    container.innerHTML = htmlContent;
+                    container.style.opacity = '1';
+                }
+
+                // Güncel değeri kaydet
+                templateSelect.setAttribute('data-current-template', selectedValue);
+
+                // Preview güncelle
+                updateLabelPreview();
+
+            } catch (error) {
+                console.error('Şablon değişikliği hatası:', error);
+                showAlert('danger', 'Şablon değiştirilirken bir hata oluştu: ' + error.message);
+                if (container) container.style.opacity = '1';
+            }
+        }
+
+        // 🔹 GÖNDEREN CANLI ÖNİZLEME
+        function updateSenderPreview() {
+            const textarea = document.getElementById('DefaultGonderen');
+            const preview = document.getElementById('defaultSenderPreviewText');
+
+            if (!textarea || !preview) {
+                return;
+            }
+
+            const raw = textarea.value && textarea.value.trim().length > 0
+                ? textarea.value
+                : 'Taşra Belediyesi';
+
+            while (preview.firstChild) {
+                preview.removeChild(preview.firstChild);
+            }
+
+            raw.split(/\r?\n/).forEach(line => {
+                const div = document.createElement('div');
+                div.textContent = line;
+                preview.appendChild(div);
+            });
+        }
+
+        // 🔹 ETİKET ÖNİZLEME GÜNCELLE
+        function updateLabelPreview() {
+            const paperSizeInput = document.querySelector('[name="LabelSettingsV2.PaperSize"]');
+            const orientationInput = document.querySelector('[name="LabelSettingsV2.Orientation"]');
+            const templateInput = document.querySelector('[name="LabelSettingsV2.Template"]');
+
+            if (!paperSizeInput || !orientationInput || !templateInput) return;
+
+            const paperSize = paperSizeInput.value;
+            const orientation = orientationInput.value;
+            const template = templateInput.value;
+
+            const summaryElement = document.getElementById('labelSettingsSummary');
+            if (!summaryElement) return;
+
+            summaryElement.textContent = `${paperSize} - ${orientation} - ${template}`;
+        }
+
+        // 🔹 UYARI GÖSTERME HELPER'I
+        function showAlert(type, message) {
+            const alertPlaceholder = document.getElementById('alertPlaceholder');
+            if (!alertPlaceholder) return;
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = [
+                `<div class="alert alert-${type} alert-dismissible fade show" role="alert">`,
+                `   <div>${message}</div>`,
+                '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                '</div>'
+            ].join('');
+
+            alertPlaceholder.append(wrapper);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('settingsForm');
+
+            // Gönderen canlı önizleme
+            const senderInput = document.getElementById('DefaultGonderen');
+            if (senderInput) {
+                senderInput.addEventListener('input', updateSenderPreview);
+                updateSenderPreview();
+            }
+
+            // Barkod input değişikliklerinde preview güncelle
+            document.querySelectorAll('[name="BarcodePrefix"], [name="BarcodeStartNumber"], [name="BarcodeDigitCount"], [name="BarcodeSuffix"]')
+                .forEach(input => {
+                    input.addEventListener('input', updateBarcodePreview);
+                });
+
+            // Şablon değişikliği dinleyicisi
+            document.body.addEventListener('change', function (e) {
+                if (e.target && e.target.id === 'labelTemplateSelect') {
+                    handleTemplateChange();
+                }
+            });
+
+            updateBarcodePreview();
+            updateLabelPreview();
+
+            // Form submit validation
+            if (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+
+                    form.classList.add('was-validated');
+                });
+
+                // Real-time validation
+                form.querySelectorAll('input[required], textarea[required], select[required]').forEach(input => {
+                    input.addEventListener('input', function () {
+                        if (this.checkValidity()) {
+                            this.classList.remove('is-invalid');
+                        } else {
+                            this.classList.add('is-invalid');
+                        }
+                    });
+                });
+
+                // Sayısal input kontrolleri
+                form.querySelectorAll('input[type="number"]').forEach(input => {
+                    input.addEventListener('change', function () {
+                        const min = parseFloat(this.min) || -Infinity;
+                        const max = parseFloat(this.max) || Infinity;
+                        const value = parseFloat(this.value);
+
+                        if (value < min || value > max) {
+                            this.classList.add('is-invalid');
+                        } else {
+                            this.classList.remove('is-invalid');
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+}
