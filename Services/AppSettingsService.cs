@@ -245,6 +245,7 @@ namespace TasraPostaManager.Services
                 // 📋 TESLİM LİSTESİ AYARLARI
                 label.ListFontSize = ParseInt(GetSetting("Label.ListFontSize", "9"), 9);
                 label.ListShowRowNumber = ParseBool(GetSetting("Label.ListShowRowNumber", "true"), true);
+                label.ListShowMuhabere = ParseBool(GetSetting("Label.ListShowMuhabere", "true"), true);
                 label.ListShowBarcode = ParseBool(GetSetting("Label.ListShowBarcode", "true"), true);
                 label.ListShowReceiver = ParseBool(GetSetting("Label.ListShowReceiver", "true"), true);
                 label.ListShowAmount = ParseBool(GetSetting("Label.ListShowAmount", "true"), true);
@@ -318,6 +319,7 @@ namespace TasraPostaManager.Services
                 // 📋 TESLİM LİSTESİ AYARLARI
                 SetSetting("Label.ListFontSize", label.ListFontSize.ToString());
                 SetSetting("Label.ListShowRowNumber", label.ListShowRowNumber.ToString().ToLower());
+                SetSetting("Label.ListShowMuhabere", label.ListShowMuhabere.ToString().ToLower());
                 SetSetting("Label.ListShowBarcode", label.ListShowBarcode.ToString().ToLower());
                 SetSetting("Label.ListShowReceiver", label.ListShowReceiver.ToString().ToLower());
                 SetSetting("Label.ListShowAmount", label.ListShowAmount.ToString().ToLower());
@@ -735,6 +737,7 @@ namespace TasraPostaManager.Services
 
                 // 🔹 v2 LIST defaults
                 ["Label.ListShowRowNumber"] = "true",
+                ["Label.ListShowMuhabere"] = "true",
                 ["Label.ListShowBarcode"] = "true",
                 ["Label.ListShowReceiver"] = "true",
                 ["Label.ListShowAmount"] = "true",

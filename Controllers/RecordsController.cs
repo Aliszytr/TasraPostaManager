@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TasraPostaManager.Data;
 using TasraPostaManager.Models;
@@ -10,6 +11,7 @@ using System.Threading.Tasks;
 
 namespace TasraPostaManager.Controllers
 {
+    [Authorize]
     public class RecordsController : Controller
     {
         private readonly AppDbContext _db;

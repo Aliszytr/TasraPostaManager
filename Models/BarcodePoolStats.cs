@@ -6,4 +6,5 @@ public class BarcodePoolStats
     public long Used { get; set; }
     public long Available { get; set; }
     public long Disabled { get; set; }
+    public long UsedToday { get; set; }
 }

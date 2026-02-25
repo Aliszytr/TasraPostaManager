@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TasraPostaManager.Services;
 using TasraPostaManager.Models;
@@ -5,6 +6,7 @@ using TasraPostaManager.Data;
 
 namespace TasraPostaManager.Controllers
 {
+    [Authorize]
     public class UploadsController : Controller
     {
         private readonly ExcelImporter _importer;

@@ -1,4 +1,6 @@
-﻿using DotNetEnv;
+﻿// DotNetEnv — .env dosyası opsiyonel fallback olarak desteklenir
+// Hassas veriler öncelikli olarak User Secrets veya Environment Variables ile yönetilir.
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
@@ -20,7 +22,25 @@ try
 {
     Log.Information("TasraPostaManager başlatılıyor...");
 
-    Env.Load(); // .env dosyasını yükle
+    // .env dosyası varsa ortam değişkenlerine yükle (opsiyonel fallback)
+    try
+    {
+        var envPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".env");
+        if (File.Exists(envPath))
+        {
+            DotNetEnv.Env.Load(envPath);
+            Log.Information(".env dosyası yüklendi (fallback)");
+        }
+        else if (File.Exists(".env"))
+        {
+            DotNetEnv.Env.Load();
+            Log.Information(".env dosyası yüklendi (çalışma dizini)");
+        }
+    }
+    catch (Exception envEx)
+    {
+        Log.Warning(envEx, ".env dosyası yüklenemedi — User Secrets veya environment variables kullanılacak");
+    }
 
     var builder = WebApplication.CreateBuilder(args);
 
@@ -146,6 +166,9 @@ try
     // E-posta
     builder.Services.AddScoped<IEmailService, EmailService>();
 
+    // Veritabanı Yedekleme
+    builder.Services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
+
     // PTT Uyumlu Export
     builder.Services.AddScoped<IExcelExportService, ExcelExportService>();
     builder.Services.AddScoped<ICsvExportService, CsvExportService>();
@@ -163,6 +186,42 @@ try
 
     // HTTP Client
     builder.Services.AddHttpClient();
+
+    // ─────────────────────────────────────────────────────────
+    // 10. ASP.NET IDENTITY — Authentication & Authorization
+    // ─────────────────────────────────────────────────────────
+    builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+    {
+        // Şifre politikası (Türkçe dostu)
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredLength = 6;
+
+        // Kullanıcı ayarları
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = false;
+
+        // Lockout
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+
+    // Cookie ayarları
+    builder.Services.ConfigureApplicationCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(30);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    });
 
     // ─────────────────────────────────────────────────────────
     // 9. CORS — Geliştirme ortamı
@@ -228,6 +287,7 @@ try
     app.UseHttpsRedirection();
     app.UseStaticFiles();
     app.UseRouting();
+    app.UseAuthentication();
     app.UseAuthorization();
     app.UseSession();
 
@@ -262,6 +322,49 @@ try
             if (!app.Environment.IsDevelopment())
             {
                 throw; // Production'da fail-fast
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // IDENTITY SEED — Admin kullanıcısı oluşturma
+    // ─────────────────────────────────────────────────────────
+    using (var seedScope = app.Services.CreateScope())
+    {
+        var roleManager = seedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+
+        string[] roles = { "Admin", "User" };
+        foreach (var role in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole(role));
+                Log.Information("Rol oluşturuldu: {Role}", role);
+            }
+        }
+
+        const string adminEmail = "admin@tasraposta.local";
+        const string adminPassword = "Admin123!";
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+        if (adminUser == null)
+        {
+            adminUser = new IdentityUser
+            {
+                UserName = "admin",
+                Email = adminEmail,
+                EmailConfirmed = true
+            };
+            var result = await userManager.CreateAsync(adminUser, adminPassword);
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+                Log.Information("Admin kullanıcısı oluşturuldu: {Email}", adminEmail);
+            }
+            else
+            {
+                Log.Error("Admin kullanıcısı oluşturulamadı: {Errors}",
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
             }
         }
     }

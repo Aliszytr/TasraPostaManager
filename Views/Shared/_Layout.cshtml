@@ -34,6 +34,7 @@
 <body>
     @{
         var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+        var isAdmin = User.IsInRole("Admin");
     }
 
     <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
@@ -77,10 +78,21 @@
                 <span class="sidebar-link-text">Sabit İçe Aktarım</span>
             </a>
 
-            <a href="@Url.Action("Index", "Settings")" class="sidebar-link @(currentController == "Settings" ? "active" : "")" title="Ayarlar">
-                <i class="fas fa-cog"></i>
-                <span class="sidebar-link-text">Ayarlar</span>
-            </a>
+            @if (isAdmin)
+            {
+                <a href="/Account/Users" class="sidebar-link @(currentController == "Account" ? "active" : "")" title="Kullanıcılar">
+                    <i class="fas fa-users"></i>
+                    <span class="sidebar-link-text">Kullanıcılar</span>
+                </a>
+            }
+
+            @if (isAdmin)
+            {
+                <a href="@Url.Action("Index", "Settings")" class="sidebar-link @(currentController == "Settings" ? "active" : "")" title="Ayarlar">
+                    <i class="fas fa-cog"></i>
+                    <span class="sidebar-link-text">Ayarlar</span>
+                </a>
+            }
         </nav>
 
         <!-- Sidebar Footer: Collapse Toggle -->
@@ -127,19 +139,33 @@
                     <div class="topbar-user-avatar">
                         <i class="fas fa-user"></i>
                     </div>
-                    <span class="topbar-user-name">Admin</span>
+                    <span class="topbar-user-name">@User.Identity?.Name</span>
+                    @if (isAdmin)
+                    {
+                        <span class="badge bg-danger ms-1" style="font-size:0.65rem;">Admin</span>
+                    }
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
+                    @if (isAdmin)
+                    {
+                        <li>
+                            <a class="dropdown-item" href="/Account/Users">
+                                <i class="fas fa-users me-2"></i>Kullanıcılar
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="@Url.Action("Index", "Settings")">
+                                <i class="fas fa-cog me-2"></i>Ayarlar
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                    }
                     <li>
-                        <a class="dropdown-item" href="@Url.Action("Index", "Settings")">
-                            <i class="fas fa-cog me-2"></i>Ayarlar
-                        </a>
-                    </li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <a class="dropdown-item" href="/" title="Ana Sayfaya Dön">
-                            <i class="fas fa-right-from-bracket me-2"></i>Çıkış
-                        </a>
+                        <form asp-action="Logout" asp-controller="Account" method="post" class="d-inline">
+                            <button type="submit" class="dropdown-item">
+                                <i class="fas fa-right-from-bracket me-2"></i>Çıkış Yap
+                            </button>
+                        </form>
                     </li>
                 </ul>
             </div>

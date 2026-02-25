@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TasraPostaManager.Core.Interfaces;
@@ -10,6 +11,7 @@ namespace TasraPostaManager.Controllers.Api;
 /// REST API — Kayıt yönetimi endpoint'leri.
 /// Prefix: /api/records
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/records")]
 [Produces("application/json")]

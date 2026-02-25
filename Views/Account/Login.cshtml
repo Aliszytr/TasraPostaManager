@@ -1,0 +1,59 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Giriş Yap";
+    Layout = "~/Views/Shared/_AuthLayout.cshtml";
+}
+
+<div class="auth-card">
+    <div class="auth-logo">
+        <i class="fas fa-mail-bulk"></i>
+        <h1>TasraPostaManager</h1>
+        <p>Posta Yönetim Sistemi</p>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="auth-error">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <span>@error.ErrorMessage</span>
+            }
+        </div>
+    }
+
+    <form asp-action="Login" asp-controller="Account" method="post">
+        <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+        <div class="mb-3">
+            <label asp-for="Username" class="form-label"></label>
+            <div class="input-group-auth">
+                <i class="fas fa-user"></i>
+                <input asp-for="Username" class="form-control" placeholder="Kullanıcı adınızı girin" autofocus />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <div class="input-group-auth">
+                <i class="fas fa-lock"></i>
+                <input asp-for="Password" class="form-control" placeholder="Şifrenizi girin" />
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <div class="form-check">
+                <input asp-for="RememberMe" class="form-check-input" />
+                <label asp-for="RememberMe" class="form-check-label"></label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-auth">
+            <i class="fas fa-sign-in-alt me-2"></i>Giriş Yap
+        </button>
+    </form>
+
+    <div class="auth-footer">
+        <i class="fas fa-shield-alt me-1"></i> Güvenli bağlantı
+    </div>
+</div>

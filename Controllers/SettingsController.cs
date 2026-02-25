@@ -1,22 +1,28 @@
-﻿using Microsoft.AspNetCore.Hosting;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using TasraPostaManager.Data;
 using TasraPostaManager.Models;
 using TasraPostaManager.Services;
 
 namespace TasraPostaManager.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class SettingsController : Controller
     {
         private readonly IAppSettingsService _settingsService;
         private readonly IBarcodePoolService _barcodePoolService;
         private readonly IBarcodePoolImportService _barcodePoolImport;
         private readonly IBarcodePoolExportService _barcodePoolExport;
+        private readonly IDatabaseBackupService _backupService;
+        private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<SettingsController> _logger;
 
@@ -25,6 +31,8 @@ namespace TasraPostaManager.Controllers
             IBarcodePoolService barcodePoolService,
             IBarcodePoolImportService barcodePoolImport,
             IBarcodePoolExportService barcodePoolExport,
+            IDatabaseBackupService backupService,
+            AppDbContext db,
             IWebHostEnvironment env,
             ILogger<SettingsController> logger)
         {
@@ -32,6 +40,8 @@ namespace TasraPostaManager.Controllers
             _barcodePoolService = barcodePoolService;
             _barcodePoolImport = barcodePoolImport;
             _barcodePoolExport = barcodePoolExport;
+            _backupService = backupService;
+            _db = db;
             _env = env;
             _logger = logger;
         }
@@ -344,6 +354,113 @@ namespace TasraPostaManager.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        // ================================================================
+        //  VERİTABANI YEDEKLEME
+        // ================================================================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BackupDatabase()
+        {
+            var result = await _backupService.BackupAsync();
+            if (result.Success)
+            {
+                TempData["Success"] = $"Veritabanı yedeği başarıyla oluşturuldu: <strong>{result.FileName}</strong> ({FormatSize(result.FileSizeBytes)}) — {result.Duration.TotalSeconds:F1} saniye";
+                // JavaScript otomatik indirme tetikleyecek
+                TempData["AutoDownloadBackup"] = result.FileName;
+            }
+            else
+            {
+                TempData["Error"] = $"Yedekleme hatası: {result.ErrorMessage}";
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBackups()
+        {
+            var backups = await _backupService.GetBackupListAsync();
+            return Json(backups.Select(b => new
+            {
+                b.FileName,
+                b.SizeDisplay,
+                CreatedAt = b.CreatedAt.ToString("dd.MM.yyyy HH:mm"),
+                b.SizeBytes
+            }));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DownloadBackup(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return NotFound();
+
+            var stream = await _backupService.GetBackupStreamAsync(fileName);
+            if (stream == null)
+                return NotFound();
+
+            return File(stream, "application/octet-stream", fileName);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteBackup(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                TempData["Error"] = "Dosya adı belirtilmedi.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var success = await _backupService.DeleteBackupAsync(fileName);
+            if (success)
+                TempData["Success"] = $"Yedek dosyası silindi: <strong>{fileName}</strong>";
+            else
+                TempData["Error"] = $"Yedek dosyası silinemedi: {fileName}";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ================================================================
+        //  BARKOD HAVUZU SIFIRLAMA
+        // ================================================================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetBarcodePool()
+        {
+            try
+            {
+                var count = await _db.BarcodePoolItems.CountAsync();
+                _db.BarcodePoolItems.RemoveRange(_db.BarcodePoolItems);
+                await _db.SaveChangesAsync();
+
+                _logger.LogWarning("Barkod havuzu sıfırlandı — {Count} barkod silindi (Admin: {User})",
+                    count, User.Identity?.Name);
+
+                TempData["Success"] = $"Barkod havuzu sıfırlandı — <strong>{count:N0}</strong> barkod silindi.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Barkod havuzu sıfırlama hatası");
+                TempData["Error"] = $"Barkod havuzu sıfırlanırken hata oluştu: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ================================================================
+        //  YARDIMCI
+        // ================================================================
+
+        private static string FormatSize(long bytes) => bytes switch
+        {
+            < 1024 => $"{bytes} B",
+            < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024.0):F1} MB",
+            _ => $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB"
+        };
     }
 
     public class LabelTemplateChangeRequest

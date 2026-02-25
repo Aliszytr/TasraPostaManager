@@ -1,0 +1,104 @@
+@model List<UserListViewModel>
+@{
+    ViewData["Title"] = "Kullanıcı Yönetimi";
+}
+
+@section ActionButtons {
+    <div class="d-flex gap-2">
+        <a href="/Account/Register" class="btn btn-primary">
+            <i class="fas fa-user-plus me-1"></i>Yeni Kullanıcı
+        </a>
+    </div>
+}
+
+<div class="container-fluid py-4">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-users me-2 text-primary"></i>Sistemdeki Kullanıcılar</h5>
+            <span class="badge bg-primary">@Model.Count kullanıcı</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Kullanıcı Adı</th>
+                            <th>E-posta</th>
+                            <th>Rol</th>
+                            <th>Durum</th>
+                            <th class="text-end pe-4">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                             style="width:36px; height:36px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; font-weight: 600; font-size: 0.875rem;">
+                                            @user.Username[0].ToString().ToUpper()
+                                        </div>
+                                        <strong>@user.Username</strong>
+                                    </div>
+                                </td>
+                                <td class="text-muted">@user.Email</td>
+                                <td>
+                                    @if (user.Roles.Contains("Admin"))
+                                    {
+                                        <span class="badge bg-danger"><i class="fas fa-crown me-1"></i>Admin</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info">Kullanıcı</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.IsLockedOut)
+                                    {
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-lock me-1"></i>Kilitli</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Aktif</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    @if (user.Username != User.Identity?.Name)
+                                    {
+                                        <form asp-action="DeleteUser" asp-controller="Account" method="post" class="d-inline"
+                                              onsubmit="return confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')">
+                                            <input type="hidden" name="id" value="@user.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary"><i class="fas fa-user-check me-1"></i>Siz</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

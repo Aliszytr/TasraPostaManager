@@ -39,3 +39,6 @@ out/
 
 ## User secrets
 appsettings.Development.json
+
+## Database backups
+Backups/

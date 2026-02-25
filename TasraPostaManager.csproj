@@ -5,6 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<InvariantGlobalization>false</InvariantGlobalization>
 		<DefaultItemExcludes>$(DefaultItemExcludes);tests\**;TestOutput\**</DefaultItemExcludes>
+		<UserSecretsId>tasraposta-manager-2025</UserSecretsId>
 
 		<!-- ÇIKTI (bin) sadece C:\VSCache altında toplansın -->
 		<!--	<BaseOutputPath>C:\VSCache\TasraPostaManager\</BaseOutputPath>-->
@@ -30,6 +31,11 @@
 
 	<ItemGroup>
 		<PackageReference Include="ClosedXML" Version="0.102.2" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		  <PrivateAssets>all</PrivateAssets>
+		</PackageReference>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>

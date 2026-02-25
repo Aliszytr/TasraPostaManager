@@ -110,12 +110,18 @@ OUTPUT inserted.Barcode;
             var disabled = await _db.BarcodePoolItems.LongCountAsync(x => x.Status == BarcodePoolStatus.Disabled, ct);
             var available = await _db.BarcodePoolItems.LongCountAsync(x => !x.IsUsed && x.Status == BarcodePoolStatus.Available, ct);
 
+            var todayStart = DateTime.UtcNow.Date;
+            var tomorrowStart = todayStart.AddDays(1);
+            var usedToday = await _db.BarcodePoolItems.LongCountAsync(
+                x => x.UsedAt != null && x.UsedAt >= todayStart && x.UsedAt < tomorrowStart, ct);
+
             return new BarcodePoolStats
             {
                 Total = total,
                 Used = used,
                 Available = available,
-                Disabled = disabled
+                Disabled = disabled,
+                UsedToday = usedToday
             };
         }
         catch (SqlException ex)

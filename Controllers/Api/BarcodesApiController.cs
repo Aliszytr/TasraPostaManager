@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TasraPostaManager.Core.Interfaces;
 
@@ -7,6 +8,7 @@ namespace TasraPostaManager.Controllers.Api;
 /// REST API — Barkod havuzu endpoint'leri.
 /// Prefix: /api/barcodes
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/barcodes")]
 [Produces("application/json")]

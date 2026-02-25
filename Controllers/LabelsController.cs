@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -11,6 +12,7 @@ using TasraPostaManager.Services;
 
 namespace TasraPostaManager.Controllers
 {
+    [Authorize]
     public class LabelsController : Controller
     {
         private readonly AppDbContext _db;
